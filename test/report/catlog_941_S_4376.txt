@@ -1,0 +1,116 @@
+
+------------------------------------------------------------------------
+CAT12.8.2 r2166: 2/2:                                 /data/941_S_4376.n
+------------------------------------------------------------------------
+SANLM denoising (medium)                                             35s
+APP: Rough bias correction                                        
+  Initialize                                                          5s
+  Estimate background                                                 6s
+  Initial correction                                                 10s
+  Refine background                                                   6s
+  Final correction                                                    6s
+  Final scaling                                                      10s
+                                                                     50s
+Correct center-of-mass                                               10s
+Affine registration                                                  13s
+SPM preprocessing 1 (estimate 1 - TPM registration):                 68s
+SPM preprocessing 1 (estimate 2):                                    68s
+SPM preprocessing 2 (write)                                       
+  Write Segmentation                                                 16s
+  Update Segmentation                                                16s
+  Update Skull-Stripping                                             35s
+  Update probability maps                                             8s
+                                                                     76s
+Global intensity correction                                          13s
+SANLM denoising after intensity normalization (medium)                6s
+Fast Optimized Shooting registration                                 29s
+Local adaptive segmentation (LASstr=0.50)                         
+  Prepare maps                                                        2s
+  Prepare partitions                                                  2s
+  Prepare segments (LASmod = 1.00)                                    8s
+  Estimate local tissue thresholds (WM)                              15s
+  Estimate local tissue thresholds (GM)                              18s
+  Intensity transformation                                            0s
+  SANLM denoising after LAS (medium)                                 19s
+                                                                     69s
+ROI segmentation (partitioning)                                   
+  Atlas -> subject space                                              7s
+  Major structures                                                    2s
+  Ventricle detection                                                 7s
+  Blood vessel detection                                              5s
+  WMH detection (WMHCstr=0.47 > WMHCstr'=0.40)                       13s
+  Manual stroke lesion detection                                      0s
+  Closing of deep structures                                          1s
+  Side alignment                                                      2s
+  Final corrections                                                   3s
+                                                                     41s
+Blood vessel correction (BVCstr=0.50)                                 1s
+Amap using initial SPM12 segmentations (MRF filter strength 0.06)    15s
+    AMAP peaks: [CSF,GM,WM] = [0.360.05,0.680.08,0.980.05]
+Final cleanup (gcutstr=0.23)                                      
+  Level 1 cleanup (ROI estimation)                                    3s
+  Level 1 cleanup (brain masking)                                     2s
+  Level 2 cleanup (CSF correction)                                    1s
+  Level 3 cleanup (CSF/WM PVE)                                        2s
+                                                                      8s
+Optimized Shooting registration with 2.50:-0.25:1.50 mm (regstr=0.00)
+  Template: "/opt/spm/spm12_mcr/home/gaser/gaser/spm/spm12/toolbox/cat12/templates_MNI152NLin2009cAsym/Template_0_GS.nii"
+    1 | 2.50 | 0.0964  0.0000  0.0964 |  32.0000 
+    2 | 2.50 | 0.0925  0.0016  0.0941 |  29.4886 
+    3 | 2.50 | 0.0913  0.0024  0.0937 |  26.9772 
+    4 | 2.50 | 0.0908  0.0027  0.0935 |  24.6107 
+    5 | 2.50 | 0.0903  0.0029  0.0932 |  22.6548 
+    6 | 2.50 | 0.0899  0.0031  0.0930 |  20.6989 
+    7 | 2.50 | 0.0895  0.0032  0.0927 |  18.9688 
+    8 | 2.50 | 0.0890  0.0034  0.0924 |  17.4455 
+    9 | 2.50 | 0.0886  0.0035  0.0921 |  15.9223 
+   10 | 2.50 | 0.0881  0.0036  0.0917 |  14.6627 
+   11 | 2.50 | 0.0876  0.0038  0.0914 |  13.4764 
+   12 | 2.50 | 0.0871  0.0039  0.0910 |  12.3015 
+   13 | 2.50 | 0.0866  0.0040  0.0907 |  11.3776 
+   14 | 2.50 | 0.0861  0.0042  0.0903 |  10.4537 
+   15 | 2.25 | 0.0878  0.0043  0.0921 |   9.5920 
+   16 | 2.25 | 0.0835  0.0064  0.0899 |   8.8725 
+   17 | 2.25 | 0.0817  0.0072  0.0889 |   8.1530 
+   18 | 2.25 | 0.0806  0.0076  0.0882 |   7.5234 
+   19 | 2.25 | 0.0797  0.0078  0.0875 |   6.9630 
+   20 | 2.25 | 0.0789  0.0078  0.0867 |   6.4027 
+   21 | 2.25 | 0.0782  0.0079  0.0861 |   5.9447 
+   22 | 2.25 | 0.0775  0.0079  0.0854 |   5.5083 
+   23 | 2.25 | 0.0769  0.0079  0.0847 |   5.0803 
+   24 | 2.25 | 0.0762  0.0080  0.0841 |   4.7404 
+   25 | 2.25 | 0.0756  0.0079  0.0835 |   4.4005 
+   26 | 2.25 | 0.0750  0.0079  0.0829 |   4.0868 
+   27 | 2.25 | 0.0745  0.0079  0.0823 |   3.8221 
+   29 | 2.00 | 0.0750  0.0071  0.0821 |   3.3283 
+   30 | 2.00 | 0.0720  0.0084  0.0804 |   3.1221 
+   43 | 1.75 | 0.0712  0.0045  0.0757 |   1.5785 
+   44 | 1.75 | 0.0657  0.0075  0.0732 |   1.5194 
+   57 | 1.50 | 0.0633  0.0058  0.0692 |   1.0900 
+   58 | 1.50 | 0.0593  0.0085  0.0677 |   1.0730 
+Shooting registration with 2.50:-0.25:1.50 mm takes                 138s
+  Prepare output                                                      6s
+                                                                    144s
+  Jacobian determinant (RMS): 0.013 0.052 0.097 0.125 0.156 |  0.162523 
+           Template Matching: 0.096 0.223 0.216 0.197 0.178 |  0.177756 
+Write result maps                                                     6s
+ROI estimation in native space                                    
+  ROI estimation of 'thalamic_nuclei' atlas                           6s
+  ROI estimation of 'cobra' atlas                                    19s
+  ROI estimation of 'neuromorphometrics' atlas                       50s
+  ROI estimation of 'suit' atlas                                      7s
+  ROI estimation of 'Schaefer2018_100Parcels_17Networks_order' atlas   23s
+  Write results                                                      24s
+                                                                    106s
+Quality check                                                        11s
+  /data/report/catreport_941_S_4376.pdf
+
+------------------------------------------------------------------------
+CAT preprocessing takes 13 minute(s) and 40 second(s).
+Image Quality Rating (IQR):  80.65% (B-)
+GM volume (GMV):             39.52% (553.70 / 1401.19 ml)
+Segmentations are saved in /data/mri
+Reports are saved in /data/report
+Labels are saved in /data/label
+------------------------------------------------------------------------
+
