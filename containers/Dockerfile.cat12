@@ -41,7 +41,6 @@ RUN wget --progress=bar:force -P /tmp http://www.neuro.uni-jena.de/cat12/${CAT_F
  && cp -v ${CAT_PATH}/cat_long_main.txt ${CAT_PATH}/cat_long_main.m \
  && rm -rf /tmp/*
 ENV PATH="${PATH}:/opt/spm/standalone"
-<<<<<<< HEAD
 ENV SPMROOT /opt/spm
 
 # 5) Mount Necessary Scripts
@@ -63,7 +62,4 @@ ENTRYPOINT ["/usr/local/bin/run_segmentation.sh"]
 # To Build:
 # docker build -t cat12:latest -f Dockerfile.cat12 .
 # To Run:
-# docker run --rm -v C:/Users/Calvin/Documents/Software/Research/nimlab/vbm/cat12/test:/data cat12:latest
-=======
-ENV SPMROOT /opt/spm
->>>>>>> fbfabb58dd06485c99cb250b7976a8f452b3426b
+# docker run --rm -v C:/Users/Calvin/OneDrive/OneDrive_Documents/Work/Software/VBM/test:/data cat12:latest
