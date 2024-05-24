@@ -5,7 +5,7 @@ import warnings
 warnings.filterwarnings('ignore')
 import pandas as pd
 from glob import glob
-from calvin_utils.file_utils.import_matrices import import_matrices_from_folder
+from calvin_vbm.file_utils.import_matrices import import_matrices_from_folder
 from nimlab import datasets as nimds
 from nilearn import image, plotting
 import nibabel as nib

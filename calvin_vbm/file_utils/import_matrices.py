@@ -3,7 +3,7 @@ from glob import glob
 from nilearn import image
 import os
 import pandas as pd
-from calvin_utils.nifti_utils.matrix_utilities import import_nifti_to_numpy_array
+from calvin_vbm.nifti_utils.matrix_utilities import import_nifti_to_numpy_array
 
 import nibabel as nib
 
