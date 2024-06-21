@@ -14,6 +14,8 @@ import nibabel as nib
 from nilearn.image import resample_to_img
 from nilearn import image
 import re
+import os
+from tqdm import tqdm
 
 def nifti_from_matrix(matrix, output_file, ref_file=None, use_reference=True, reference='MNI', use_affine=False, affine='MNI', output_name=None, silent=False):
     """Converts a flattened matrix to a NIfTI file using the given affine matrix.
@@ -355,3 +357,35 @@ class NiftiDataFrameHandler:
         self.sanitize_paths()
         self.create_directories()
         self.save_niftis()
+
+def save_control_nifti_to_bids(dataframes_dict, out_dir=None, dry_run=True):
+    """
+    Saves NIFTI images to a BIDS directory structure.
+    
+    Parameters:
+    - dataframes_dict (dict): Dictionary containing dataframes with NIFTI data.
+    - bids_base_dir (str): The base directory where the BIDS structure starts.
+    - ses (str, optional): Session identifier. If None, defaults to '01'.
+    
+    Note:
+    This function assumes a predefined BIDS directory structure and saves the NIFTI 
+    images accordingly. The function currently has the view_and_save_nifti call commented out 
+    for safety. Uncomment this call if you wish to actually save the NIFTI images.
+    
+    Example:
+    >>> dfs = { ... }  # some dictionary with dataframes
+    >>> save_nifti_to_bids(dfs, '/path/to/base/dir')
+    """
+
+    
+    for segment, dataframe in tqdm(dataframes_dict.items()):
+            dataframe['Mean'] = dataframe.mean(axis=1)
+            dataframe['Std'] = dataframe.std(axis=1)
+            os.makedirs(out_dir, exist_ok=True)
+            
+            view_and_save_nifti(matrix=dataframe['Mean'],
+                                out_dir=out_dir,
+                                output_name=(f'{segment}_mean'))
+            view_and_save_nifti(matrix=dataframe['Std'],
+                                out_dir=out_dir,
+                                output_name=(f'{segment}_stdev'))
