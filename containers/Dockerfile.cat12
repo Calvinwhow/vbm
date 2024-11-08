@@ -39,23 +39,7 @@ RUN wget --progress=bar:force -P /tmp http://www.neuro.uni-jena.de/cat12/${CAT_F
 ENV PATH="${PATH}:/opt/spm/standalone"
 ENV SPMROOT /opt/spm
 
-# 5) Mount Necessary Scripts
-# Copy the CAT12 segmentation script into the container
-COPY ./run_segmentation.sh /usr/local/bin/run_segmentation.sh
-COPY ./cat_standalone_segment_calvin.m /opt/spm/standalone/cat_standalone_segment_calvin.m
-COPY ./cat_standalone_smooth_calvin.m /opt/spm/standalone/cat_standalone_smooth_calvin.m
-COPY ./cat_standalone_get_TIV_calvin.m /opt/spm/standalone/cat_standalone_get_TIV_calvin.m
-# Give execute permissions to the script
-RUN chmod +x /usr/local/bin/run_segmentation.sh
-RUN chmod +x /opt/spm/standalone/cat_standalone_segment_calvin.m
-RUN chmod +x /opt/spm/standalone/cat_standalone_smooth_calvin.m
-RUN chmod +x /opt/spm/standalone/cat_standalone_get_TIV_calvin.m
 
-# 6) Orchestrate the Script
-ENTRYPOINT ["/usr/local/bin/run_segmentation.sh"]
-
-# ---Instructions---
-# To Build:
-# docker build -t cat12:latest -f Dockerfile.cat12 .
-# To Run:
-# docker run --rm -v C:/Users/Calvin/OneDrive/OneDrive_Documents/Work/Software/VBM/test:/data cat12:latest
+# 5) Orchestrate the Script
+ENTRYPOINT ["/bin/bash", "-c", "source ${MCRROOT}/bin/matlab && source ${SPMROOT}/run_spm12.sh ${MCRROOT} && exec \"$@\""]
+# ENTRYPOINT ["/usr/local/bin/run_segmentation.sh"]

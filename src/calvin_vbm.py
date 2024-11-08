@@ -10,15 +10,13 @@ class CalvinVBM:
     """
 
     @staticmethod
-    def build_docker_image(project_root_path=None):
+    def build_docker_image(project_root_path=None, dockerfile_path="Dockerfile.cat12"):
         """
-        Navigates to the /containers directory under the provided project root path
-        and builds the Docker image from Dockerfile.cat12. If no project_root_path 
-        is provided, it assumes the script is running from /notebooks and uses a 
-        relative path.
+        Builds the Docker image from the specified Dockerfile.
 
         Args:
             project_root_path (str): The absolute path to the project root directory.
+            dockerfile_path (str): The filename of the Dockerfile (default is 'Dockerfile.cat12').
         """
         if project_root_path:
             containers_path = os.path.join(project_root_path, "containers")
@@ -32,7 +30,7 @@ class CalvinVBM:
         os.chdir(containers_path)
         print("Building Docker image...")
         result = subprocess.run(
-            ["docker", "build", "-t", "cat12:latest", "-f", "Dockerfile.cat12", "."],
+            ["docker", "build", "-t", "cat12:latest", "-f", dockerfile_path, "."],
             capture_output=True,
             text=True
         )
@@ -54,67 +52,37 @@ class CalvinVBM:
             str: The converted path suitable for Docker volume mounting.
         """
         if platform.system() == "Windows":
-            return path.replace("\\", "/") #.replace("C:", "C")
+            return path.replace("\\", "/")
         return path
 
     @staticmethod
-    def run_docker_on_folder(folder_path):
+    def run_docker_with_script(data_dir_path, script_path):
         """
-        Runs the Docker container on the specified folder containing NIfTI files.
+        Runs a Docker container with the specified script mounted and executed.
 
         Args:
-            folder_path (str): The path to the folder containing NIfTI files.
+            data_dir_path (str): The path to the directory containing the NIfTI data.
+            script_path (str): The path to the script to run inside the container.
         """
         try:
-            docker_path = CalvinVBM.convert_path_for_docker(folder_path)
-            print(f"Processing folder with Docker: {folder_path}")
-            subprocess.run(["docker", "run", "--rm", "-v", f"{docker_path}:/data", "cat12:latest"], check=True)
-            print(f"Finished processing: {folder_path}")
-        except subprocess.CalledProcessError as e:
-            print(f"An error occurred while processing {folder_path} with Docker: {e}")
+            # Convert paths for Docker compatibility
+            data_dir_docker_path = CalvinVBM.convert_path_for_docker(data_dir_path)
+            script_docker_path = CalvinVBM.convert_path_for_docker(os.path.dirname(script_path))
+            script_filename = os.path.basename(script_path)
 
-    @staticmethod
-    def submit_hpc_jobs(data_dir, docker_script_path, job_script_path):
-        """
-        Submits jobs to an HPC scheduler for processing each subdirectory 
-        in the specified data directory.
+            # Check if the Docker image exists; if not, build it
+            image_check = subprocess.run(["docker", "images", "-q", "cat12:latest"], capture_output=True, text=True)
+            if not image_check.stdout.strip():
+                raise FileExistsError("Docker image not found. You must build or pull the image first.")
 
-        Args:
-            data_dir (str): The path to the directory containing subdirectories with NIfTI files.
-            docker_script_path (str): The path to the Docker run script.
-            job_script_path (str): The path to the job submission script for HPC.
-        """
-        # Ensure the data directory exists
-        if not os.path.isdir(data_dir):
-            print(f"Data directory does not exist: {data_dir}")
-            sys.exit(1)
-
-        # Iterate over all subdirectories and submit a job for each
-        for folder_name in os.listdir(data_dir):
-            folder_path = os.path.join(data_dir, folder_name)
-            if os.path.isdir(folder_path):
-                CalvinVBM.submit_hpc_job(folder_path, docker_script_path, job_script_path)
-
-    @staticmethod
-    def submit_hpc_job(folder_path, docker_script_path, job_script_path):
-        """
-        Submits a single job to an HPC scheduler for processing a given folder.
-
-        Args:
-            folder_path (str): The path to the folder to process.
-            docker_script_path (str): The path to the Docker run script.
-            job_script_path (str): The path to the job submission script for HPC.
-        """
-        try:
-            print(f"Submitting job for folder: {folder_path}")
-            # Replace the following line with your HPC's job submission command
+            # Run the Docker container with mounted volumes
+            print(f"Running Docker container with script: {script_filename}")
             subprocess.run([
-                "bsub", "-J", "cat12_job", 
-                "-o", "/path/to/output.txt", 
-                "-e", "/path/to/error.txt", 
-                "-q", "normal", 
-                "-R", "rusage[mem=6000]", 
-                "python", docker_script_path, folder_path
+                "docker", "run", "--rm",
+                "-v", f"{data_dir_docker_path}:/data",
+                "-v", f"{script_docker_path}:/scripts",
+                "cat12:latest", f"/scripts/{script_filename}"
             ], check=True)
+            print("Docker container executed successfully.")
         except subprocess.CalledProcessError as e:
-            print(f"An error occurred while submitting {folder_path}: {e}")
+            print(f"An error occurred while running Docker: {e}")
