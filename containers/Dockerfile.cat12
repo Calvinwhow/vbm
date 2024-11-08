@@ -41,5 +41,5 @@ ENV SPMROOT /opt/spm
 
 
 # 5) Orchestrate the Script
-ENTRYPOINT ["/bin/bash", "-c", "source ${MCRROOT}/bin/matlab && source ${SPMROOT}/run_spm12.sh ${MCRROOT} && exec \"$@\""]
-# ENTRYPOINT ["/usr/local/bin/run_segmentation.sh"]
+# ENTRYPOINT ["/bin/bash", "-c", "source ${MCRROOT}/bin/matlab && source ${SPMROOT}/run_spm12.sh ${MCRROOT} && exec \"$@\""]
+CMD ["/bin/bash"] 
