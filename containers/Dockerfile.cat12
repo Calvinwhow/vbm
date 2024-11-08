@@ -2,11 +2,7 @@ FROM ubuntu:focal-20210416
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-<<<<<<< HEAD
-# 1) set the working directory
-=======
 # set the working directory
->>>>>>> fbfabb58dd06485c99cb250b7976a8f452b3426b
 WORKDIR /root
 
 # 2) install dependencies and prereqs
