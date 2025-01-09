@@ -1,0 +1,30 @@
+# Use QEMU for multi-architecture compatibility
+FROM multiarch/qemu-user-static:latest as qemu
+
+# Base lightweight Python image
+FROM python:3.9-slim
+
+# Copy QEMU emulators for multi-architecture support
+COPY --from=qemu /usr/bin/qemu-* /usr/bin/
+
+# Set environment variables for non-interactive installations
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    binfmt-support \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/* \
+ && update-binfmts --enable qemu-x86_64
+
+# Install EasyReg Standalone
+RUN git clone https://github.com/josephisaacturner/easyreg_standalone.git /easyreg_standalone \
+ && pip install -e /easyreg_standalone
+
+# Install TensorFlow (compatible with TensorFlow 2.x, required by EasyReg)
+RUN pip install "tensorflow<3.0" \
+ && python -c "import tensorflow as tf; print('TensorFlow version:', tf.__version__)"
+
+# Set default command
+CMD ["bash"]
