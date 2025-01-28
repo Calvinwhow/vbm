@@ -165,78 +165,107 @@ class CalvinVBM:
                             print(f"Could not find <vol_TIV> in {xml_path}")
                     except Exception as e:
                         print(f"Error processing {xml_path}: {e}")
-                        
-    @staticmethod
-    def run_docker_container(method, data_dir, command_type, options):
-        """
-        Runs the Docker container with the specified method, command type, and options.
+                 
+def format_commands(method='easyreg', file_target='*', ref_target='MNI152_T1_2mm_brain.nii'):
+    """
+    Formats the command-line options for the Docker command based on the specified method.
 
-        Args:
-            method (str): The method for the container ('cat12' or 'easyreg').
-            data_dir (str): The absolute path to the data directory to mount in the container.
-            command_type (str): The command to run inside the container ('easyreg-mri' or 'easywarp-mri').
-            options (dict): Dictionary containing additional options for the command. 
-                            Keys and values correspond to command-line arguments.
+    Args:
+        method (str): The method to determine the options ('easyreg' or others).
 
-        Example Usage:
-            options = {
-                '--ref': '/root/data/reference_image.nii.gz',
-                '--flo': '/root/data/floating_image.nii.gz',
-                '--threads': '6'
-            }
-            CalvinVBM.run_docker_container(
-                method='easyreg',
-                data_dir='/path/to/your/data/dir',
-                command_type='easyreg-mri',
-                options=options
-            )
-        """
-        try:
-            # Validate method
-            if method not in ["cat12", "easyreg"]:
-                raise ValueError(f"Unsupported method: {method}. Use 'cat12' or 'easyreg'.")
+    Returns:
+        dict: A dictionary of options for the Docker command.
+    """
+    n_cores = 4
+    if method == 'easyreg':
+        options = {
+            '--ref': f'/root/data/{ref_target}.nii',
+            '--flo': f'/root/data/{file_target}.nii',
+            '--ref_seg': f'/root/data/derivatives/{ref_target}_seg.nii',
+            '--flo_seg': f'/root/data/derivatives/{file_target}_seg.nii',
+            '--flo_reg': f'/root/data/derivatives/{file_target}_reg.nii',
+            '--fwd_field': f'/root/data/derivatives/forward_field.nii',
+            '--bak_field': f'/root/data/derivatives/inverse_field.nii',
+            '--threads': n_cores
+        }
+    else:
+        raise ValueError(f"Unsupported method: {method}. Add logic for other methods if needed.")
+    
+    return options
+                            
+def run_docker_container(method, data_dir, command_type, printout=True):
+    """
+    Runs the Docker container with the specified method, command type, and options.
 
-            # Map method to Docker image
-            docker_image = "vbm:latest" if method == "cat12" else "er:latest"
+    Args:
+        method (str): The method for the container ('cat12' or 'easyreg').
+        data_dir (str): The absolute path to the data directory to mount in the container.
+        command_type (str): The command to run inside the container ('easyreg-mri' or 'easywarp-mri').
 
-            # Validate command type
-            if command_type not in ["easyreg-mri", "easywarp-mri"]:
-                raise ValueError(f"Unsupported command type: {command_type}. Use 'easyreg-mri' or 'easywarp-mri'.")
+    Example Usage:
+        CalvinVBM.run_docker_container(
+            method='easyreg',
+            data_dir='/path/to/your/data/dir',
+            command_type='easyreg-mri'
+        )
+    """
+    print('-v /Users/cu135/Library/CloudStorage/OneDrive-Personal/OneDrive_Documents/Work/Software/VBM/demo:/root/data \
+    er:latest easyreg-mri \
+    --ref /root/data/MNI152_T1_2mm_brain.nii \
+    --flo /root/data/demo_pt.nii \
+    --ref_seg /root/data/MNI152_T1_2mm_brain_seg.nii \
+    --flo_seg /root/data/float_seg.nii \
+    --flo_reg /root/data/float_reg.nii \
+    --fwd_field /root/data/forward_field.nii \
+    --bak_field /root/data/inverse_field.nii \
+    --threads 4')
+    # try:
+    #     # Validate method
+    #     if method not in ["cat12", "easyreg"]:
+    #         raise ValueError(f"Unsupported method: {method}. Use 'cat12' or 'easyreg'.")
 
-            # Validate data directory
-            if not os.path.isdir(data_dir):
-                raise FileNotFoundError(f"Data directory not found: {data_dir}")
+    #     # Map method to Docker image
+    #     docker_image = "vbm:latest" if method == "cat12" else "er:latest"
 
-            # Construct volume mount argument
-            data_dir_docker_path = CalvinVBM.convert_path_for_docker(data_dir)
-            volume_mount = f"-v {data_dir_docker_path}:/root/data"
+    #     # Validate command type
+    #     if command_type not in ["easyreg-mri", "easywarp-mri"]:
+    #         raise ValueError(f"Unsupported command type: {command_type}. Use 'easyreg-mri' or 'easywarp-mri'.")
 
-            # Construct command options
-            command_options = " ".join([f"{key} {value}" for key, value in options.items()])
+    #     # Validate data directory
+    #     if not os.path.isdir(data_dir):
+    #         raise FileNotFoundError(f"Data directory not found: {data_dir}")
 
-            # Construct and execute the Docker run command
-            docker_command = [
-                "docker", "run", "--rm", "-it",
-                volume_mount,
-                docker_image,
-                command_type
-            ] + command_options.split()
+    #     # Construct volume mount argument
+    #     data_dir_docker_path = CalvinVBM.convert_path_for_docker(data_dir)
+    #     volume_mount = f"-v {data_dir_docker_path}:/root/data"
 
-            print(f"Running Docker container with command: {' '.join(docker_command)}")
-            result = subprocess.run(docker_command, capture_output=True, text=True)
+    #     # Construct command options
+    #     options = format_commands(method)
+    #     command_options = " ".join([f"{key} {value}" for key, value in options.items()])
 
-            # Output the result
-            if result.stdout:
-                print(result.stdout)
-            if result.stderr:
-                print(result.stderr)
-            if result.returncode != 0:
-                raise subprocess.CalledProcessError(result.returncode, result.args)
+    #     # Construct and execute the Docker run command
+    #     docker_command = [
+    #         "docker", "run", "--rm", "-it",
+    #         volume_mount,
+    #         docker_image,
+    #         command_type
+    #     ] + command_options.split()
 
-            print("Docker container executed successfully.")
-        except subprocess.CalledProcessError as e:
-            print(f"An error occurred while running the Docker container: {e}")
-        except ValueError as ve:
-            print(ve)
-        except FileNotFoundError as fe:
-            print(fe)
+    #     print(f"Running Docker container with command: {' '.join(docker_command)}")
+    #     result = subprocess.run(docker_command, capture_output=True, text=True)
+
+    #     # Output the result
+    #     if result.stdout:
+    #         print(result.stdout)
+    #     if result.stderr:
+    #         print(result.stderr)
+    #     if result.returncode != 0:
+    #         raise subprocess.CalledProcessError(result.returncode, result.args)
+
+    #     print("Docker container executed successfully.")
+    # except subprocess.CalledProcessError as e:
+    #     print(f"An error occurred while running the Docker container: {e}")
+    # except ValueError as ve:
+    #     print(ve)
+    # except FileNotFoundError as fe:
+    #     print(fe)
