@@ -77,6 +77,10 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb
+!*.nbconvert.ipynb  # Allow explicitly exported notebooks
+**/*-checkpoint.ipynb
+**/*-output.ipynb
 
 # IPython
 profile_default/
@@ -161,3 +165,69 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.orig
+
+# Logs
+*.log
+
+# System files
+Thumbs.db
+desktop.ini
+
+# Python bytecode
+*.py[cod]
+__pycache__/
+
+# Virtual environments
+.env
+.venv
+ENV/
+env/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+*.whl
+
+# Coverage reports
+.coverage
+.coverage.*
+.cache
+htmlcov/
+*.cover
+
+# PyInstaller
+*.spec
+*.manifest
+
+# IDEs and editors
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Miscellaneous
+*.lock
+*.bak
+*.tmp
+*.log
+*.pid
+*.seed
+*.backup
+*.swp
+*.swo
+*.DS_Store
