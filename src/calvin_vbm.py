@@ -13,6 +13,46 @@ class CalvinVBM:
     """
 
     @staticmethod
+    def pull_dockerfile(method='easyreg'):
+        """
+        Pulls a Dockerfile from the calvinwhow repository based on the method specified.
+
+        Args:
+            method (str): The method to determine which Dockerfile to pull ('cat12' for VBM or 'easyreg' for ER).
+        """
+        try:
+            # Determine the tag to use based on the method
+            if method == "cat12":
+                tag = "vbm"
+            elif method == "easyreg":
+                tag = "er"
+            else:
+                raise ValueError(f"Unsupported method: {method}. Use 'cat12' or 'easyreg'.")
+
+            # Pull the Dockerfile from the appropriate repository and tag
+            print(f"Pulling Dockerfile with tag: {tag} from calvinwhow...")
+            result = subprocess.run(
+                ["docker", "pull", f"calvinwhow/{tag}:latest"],
+                capture_output=True,
+                text=True
+            )
+
+            # Output the result of the pull command
+            if result.stdout:
+                print(result.stdout)
+            if result.stderr:
+                print(result.stderr)
+            if result.returncode != 0:
+                raise subprocess.CalledProcessError(result.returncode, result.args)
+
+            print(f"Dockerfile for {method} successfully pulled.")
+        except subprocess.CalledProcessError as e:
+            print(f"An error occurred while pulling the Dockerfile: {e}")
+        except ValueError as ve:
+            print(ve)
+
+
+    @staticmethod
     def build_docker_image(project_root_path=None, dockerfile_path="Dockerfile.cat12"):
         """
         Builds the Docker image from the specified Dockerfile.

@@ -1,0 +1,26 @@
+# Use a lightweight base image compatible with both CPU architectures
+FROM --platform=$BUILDPLATFORM python:3.10-slim-bullseye
+
+# Set environment variables to avoid buffering and allow compatibility
+ENV PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set the working directory in the container
+WORKDIR /root
+
+# Copy the entire project directory into the container
+COPY . /root
+
+# Install Python dependencies
+RUN pip install -r /root/requirements.txt  
+RUN pip install -e /root
+
+# Set the entrypoint to be customizable for running the package
+CMD ["ls", "/root"]
