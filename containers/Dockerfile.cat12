@@ -39,7 +39,7 @@ RUN wget --progress=bar:force -P /tmp http://www.neuro.uni-jena.de/cat12/${CAT_F
 ENV PATH="${PATH}:/opt/spm/standalone"
 ENV SPMROOT /opt/spm
 
-
-# 5) Orchestrate the Script
-# ENTRYPOINT ["/bin/bash", "-c", "source ${MCRROOT}/bin/matlab && source ${SPMROOT}/run_spm12.sh ${MCRROOT} && exec \"$@\""]
 CMD ["/bin/bash"] 
+
+# 5) Example of Running the Script
+#  docker run --rm -v D:\datasets\Jung_TMS_AD\anat\pre_T1:/data -v C:\Users\Calvin\Documents\Software\vbm\src:/scripts cat12:latest /scripts/run_segmentation.sh
