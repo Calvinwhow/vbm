@@ -18,7 +18,6 @@ class CalvinVBM:
         Converts a Windows path to a Docker-compatible path (if running on Windows).
         """
         return path.replace("\\", "/")
-        return path.replace('\\', '/') if platform.system() == "Windows" else path
 
     @staticmethod
     def run_docker_with_script(data_dir, script_path, container='cat12', verbose=True):
@@ -49,6 +48,7 @@ class CalvinVBM:
         
         subprocess.run(cmd, shell=True, check=True)
         print("Docker container executed successfully.")
+
     def run_container(method, data_dir, command_type, options):
         if method not in ["cat12", "easyreg"]:
             raise ValueError("Method must be 'cat12' or 'easyreg'.")
