@@ -5,22 +5,10 @@ ARG DEBIAN_FRONTEND=noninteractive
 # set the working directory
 WORKDIR /root
 
-# 2) install dependencies and prereqs
-RUN apt-get update \
- && apt-get -y install wget nano unzip libxext6 libxt6 moreutils \
- && apt-get clean
-
-# 3) install Matlab MCR at /opt/mcr
+# 1) set environment variables
 ENV MATLAB_VERSION R2017b
 ENV MCR_VERSION v93
-RUN mkdir /tmp/mcr_install \
- && mkdir /opt/mcr \
- && wget --progress=bar:force -P /tmp/mcr_install https://ssd.mathworks.com/supportfiles/downloads/R2017b/deployment_files/R2017b/installers/glnxa64/MCR_R2017b_glnxa64_installer.zip \
- && unzip -q /tmp/mcr_install/MCR_R2017b_glnxa64_installer.zip -d /tmp/mcr_install \
- && /tmp/mcr_install/install -destinationFolder /opt/mcr -agreeToLicense yes -mode silent
 ENV MCRROOT /opt/mcr/${MCR_VERSION}
-
-# 4) install MCR/standalone version of SPM12 plus CAT12 at /opt/spm
 ENV SPM_VERSION 12
 ENV SPM_REVISION r7771
 ENV MCR_INHIBIT_CTF_LOCK 1
@@ -28,7 +16,23 @@ ENV SPM_HTML_BROWSER 0
 ENV CAT_VERSION 12.8.2
 ENV CAT_REVISION r2166
 ENV CAT_FULLVERSION CAT${CAT_VERSION}_${CAT_REVISION}
-ENV CAT_PATH /opt/spm/spm12_mcr/home/gaser/gaser/spm/spm12/toolbox/cat12
+ENV CAT_PATH /opt/spm/spm12_mcr/home/gaser/gaser/spm/spm12/toolbox/cat12   
+ENV PATH="${PATH}:/opt/spm/standalone"
+ENV SPMROOT /opt/spm
+
+# 2) install dependencies and prereqs
+RUN apt-get update \
+ && apt-get -y install wget nano unzip libxext6 libxt6 moreutils dos2unix \
+ && apt-get clean 
+
+# 3) install Matlab MCR at /opt/mcr
+RUN mkdir /tmp/mcr_install \
+ && mkdir /opt/mcr \
+ && wget --progress=bar:force -P /tmp/mcr_install https://ssd.mathworks.com/supportfiles/downloads/R2017b/deployment_files/R2017b/installers/glnxa64/MCR_R2017b_glnxa64_installer.zip \
+ && unzip -q /tmp/mcr_install/MCR_R2017b_glnxa64_installer.zip -d /tmp/mcr_install \
+ && /tmp/mcr_install/install -destinationFolder /opt/mcr -agreeToLicense yes -mode silent
+
+# 4) install MCR/standalone version of SPM12 plus CAT12 at /opt/spm
 RUN wget --progress=bar:force -P /tmp http://www.neuro.uni-jena.de/cat12/${CAT_FULLVERSION}_${MATLAB_VERSION}_MCR_Linux.zip \
  && unzip -q /tmp/${CAT_FULLVERSION}_${MATLAB_VERSION}_MCR_Linux.zip -d /opt \
  && mv /opt/${CAT_FULLVERSION}_${MATLAB_VERSION}_MCR_Linux /opt/spm \
@@ -36,8 +40,21 @@ RUN wget --progress=bar:force -P /tmp http://www.neuro.uni-jena.de/cat12/${CAT_F
  && chmod +x /opt/spm/spm12 /opt/spm/*.sh ${CAT_PATH}/CAT.glnx86/CAT_* \
  && cp -v ${CAT_PATH}/cat_long_main.txt ${CAT_PATH}/cat_long_main.m \
  && rm -rf /tmp/*
-ENV PATH="${PATH}:/opt/spm/standalone"
-ENV SPMROOT /opt/spm
 
-# 5) Orchestrate the Script
-CMD ["/bin/bash"] 
+# 5) Add a wrapper script to handle script execution
+RUN echo '#!/bin/bash\n\
+if [ -z "$1" ]; then\n\
+  echo "Error: No script name provided."\n\
+  exit 1\n\
+fi\n\
+SCRIPT_PATH="/root/scripts/$1.sh"\n\
+if [ ! -f "$SCRIPT_PATH" ]; then\n\
+  echo "Error: Script $SCRIPT_PATH not found."\n\
+  exit 1\n\
+fi\n\
+dos2unix "$SCRIPT_PATH"\n\
+bash "$SCRIPT_PATH"' > /root/run_chosen_script.sh && \
+    chmod +x /root/run_chosen_script.sh
+
+# 6) Orchestrate the Script
+ENTRYPOINT [ "bash", "/root/run_chosen_script.sh" ]

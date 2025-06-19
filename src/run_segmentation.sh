@@ -6,7 +6,7 @@ CAT12_DIR=$CAT_PATH
 MATLAB_RUNTIME=$MCRROOT
 
 # 1) Run the CAT12 standalone segmentation script
-cat_standalone.sh -b /scripts/cat_standalone_segment_calvin.m \
+cat_standalone.sh -b /root/scripts/cat_standalone_segment_calvin.m \
                     /data/*.nii*
 
 # Wait for the segmentation to produce the output files

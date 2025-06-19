@@ -7,7 +7,7 @@ MATLAB_RUNTIME=$MCRROOT
 
 # Define the base directory as the mounted /data directory
 BASE_DIR="/data"
-FILE_TO_FIND="*T1w.nii*"
+FILE_TO_FIND="*.nii*"
 
 # Find all T1-weighted NIfTI files in the BIDS directory structure
 T1_FILES=$(find "$BASE_DIR" -type f -name "$FILE_TO_FIND" | sort)
@@ -31,7 +31,7 @@ for T1_FILE in $T1_FILES; do
   else
     # Run the segmentation
     echo "Running CAT12 segmentation on: $T1_FILE"
-    cat_standalone.sh -b /scripts/cat_standalone_segment_calvin.m "$T1_FILE"
+    cat_standalone.sh -b /root/scripts/cat_standalone_segment_calvin.m "$T1_FILE"
     echo "Segmentation completed for: $T1_FILE"
   fi
 
@@ -43,7 +43,7 @@ for T1_FILE in $T1_FILES; do
       echo "Smoothing already completed for: $MWP_FILE. Skipping."
     else
       echo "Running CAT12 smoothing on: $MWP_FILE"
-      cat_standalone.sh -b /scripts/cat_standalone_smooth_calvin.m "$MWP_FILE"
+      cat_standalone.sh -b /root/scripts/cat_standalone_smooth_calvin.m "$MWP_FILE"
     fi
   done
 done

@@ -104,9 +104,9 @@ matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.BIDS.BIDSno = 0;
                                                             
 % define here volume atlases
-matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.lpba40 = 0;
-matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.cobra = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.cobra = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.hammers = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.ibsr = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.aal3 = 0;
@@ -114,7 +114,7 @@ matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.mori = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.thalamus = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.anatomy3 = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.julichbrain = 0;
-matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_100Parcels_17Networks_order = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_100Parcels_17Networks_order = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_200Parcels_17Networks_order = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_400Parcels_17Networks_order = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_600Parcels_17Networks_order = 0;
@@ -130,15 +130,15 @@ matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.ownatlas = {''};
 matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.GM.warped = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.GM.mod = 1;
-matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel = 0;
+matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel = 1;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WM.native = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WM.warped = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WM.mod = 1;
-matlabbatch{1}.spm.tools.cat.estwrite.output.WM.dartel = 0;
+matlabbatch{1}.spm.tools.cat.estwrite.output.WM.dartel = 1;
 matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.native = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.warped = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.mod = 1;
-matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.dartel = 0;
+matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.dartel = 1;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WMH.native = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WMH.warped = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WMH.mod = 0;
@@ -167,7 +167,7 @@ matlabbatch{1}.spm.tools.cat.estwrite.output.label.dartel = 0;
 
 % bias and noise corrected, global intensity normalized
 matlabbatch{1}.spm.tools.cat.estwrite.output.bias.native = 0;
-matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.bias.dartel = 0;
 
 % bias and noise corrected, (locally - if LAS>0) intensity normalized
@@ -179,5 +179,5 @@ matlabbatch{1}.spm.tools.cat.estwrite.output.las.dartel = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.jacobianwarped = 0;
 
 % deformations, order is [forward inverse]
-matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [1 0];
+matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [1 1];
 
