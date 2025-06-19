@@ -1,0 +1,17 @@
+# docker-compose.yml
+# Run the CAT12 Pipeline
+# on every *.nii file in the host folder `hires_backdrops/test`.
+version: "3.9"
+
+services:
+  cat12-pipeline:
+    image: calvinwhow/vbm:cat12_latest # built with Dockerfile.easyreg
+    container_name: cat12-pipeline
+    environment:
+      - THREADS=-1
+    # ── adjust the two host paths as needed ──────────────────────────
+    volumes:
+      - /Users/cu135/Partners HealthCare Dropbox/Calvin Howard/resources/datasets/Jung_TMS_AD/anat/pre_T1:/data  # /path/to/your/nifti/file:/root/data <-- Edit to provide files to warp
+      - /Users/cu135/Software_Local/DockerizedEasyReg/shell_scripts:/root/scripts
+    # Run once, then the container exits.
+    entrypoint: [ "bash", "/root/scripts/run_segmentation_easyreg.sh" ]         # set to your script of choice. 

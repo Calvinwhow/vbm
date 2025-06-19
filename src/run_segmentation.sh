@@ -18,7 +18,3 @@ done
 # 2) Run the CAT12 Standalone Smoothing 
 cat_standalone.sh -b /scripts/cat_standalone_smooth_calvin.m \
                     /data/mri/*mwp*.nii
-
-# 3) Extract TIV for each file. 
-cat_standalone.sh -b /scripts/cat_standalone_get_TIV_calvin.m \
-                    /data/report/cat_*.xml 
