@@ -19,10 +19,10 @@ matlabbatch{1}.spm.tools.cat.estwrite.data = '<UNDEFINED>';
 %matlabbatch{1}.spm.tools.cat.estwrite.extopts.registration.regmethod.shooting.shootingtpm = '<UNDEFINED>';
 
 % Strength of Shooting registration: 0 - Dartel, eps (fast), 0.5 (default) to 1 (accurate) optimized Shooting, 4 - default Shooting; default 0.5
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.registration.regmethod.shooting.regstr = eps;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.registration.regmethod.shooting.regstr = 0;
 
 % voxel size for normalized data (EXPERIMENTAL: inf - use Tempate values)
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.registration.vox = 1.5;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.registration.vox = 2;
 
 % additional bounding box
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.registration.bb = 12;
@@ -47,7 +47,7 @@ matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.LASstr = 0.5;
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.NCstr = -Inf;
 
 % Strength of skull-stripping: 0 - SPM approach; eps to 1  - gcut; 2 - new APRG approach; -1 - no skull-stripping (already skull-stripped); default = 2
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.gcutstr = 2;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.gcutstr = 0;
 
 % Strength of the cleanup process: 0 to 1; default 0.5
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.cleanupstr = 0.5;
