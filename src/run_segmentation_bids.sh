@@ -6,11 +6,11 @@ CAT12_DIR=$CAT_PATH
 MATLAB_RUNTIME=$MCRROOT
 
 # Define the base directory as the mounted /data directory
-BASE_DIR="/data"
+BASE_DIR="/root/data"
 FILE_TO_FIND="*.nii*"
 
 # Find all T1-weighted NIfTI files in the BIDS directory structure
-T1_FILES=$(find "$BASE_DIR" -type f -name "$FILE_TO_FIND" | sort)
+T1_FILES=$(find "$BASE_DIR" -maxdepth 4 -type f -name "$FILE_TO_FIND" | sort)
 
 if [ -z "$T1_FILES" ]; then
   echo "No T1-weighted NIfTI files found in the BIDS directory."

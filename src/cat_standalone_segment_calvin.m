@@ -101,7 +101,7 @@ matlabbatch{1}.spm.tools.cat.estwrite.extopts.admin.print = 2;
 matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 0;       
 
 % BIDS output
-matlabbatch{1}.spm.tools.cat.estwrite.output.BIDS.BIDSno = 0;
+matlabbatch{1}.spm.tools.cat.estwrite.output.BIDS.BIDSno = 1;
                                                             
 % define here volume atlases
 matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 0;

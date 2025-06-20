@@ -11,7 +11,7 @@ services:
       - THREADS=-1
     # ── adjust the two host paths as needed ──────────────────────────
     volumes:
-      - C:\Users\Calvin\Partners HealthCare Dropbox\Calvin Howard\studies\rimlf\test:/data  # /path/to/your/nifti/file:/root/data <-- Edit to provide files to warp
+      - 'D:\datasets\adni\neuroimaging\true_control\bids:/root/data'  # /path/to/your/nifti/file:/root/data <-- Edit to provide files to warp
       - C:\Users\Calvin\Documents\Software\vbm\src:/root/scripts
     # Ensure the script has Unix line endings before execution.
-    entrypoint: [ "bash", "/root/run_chosen_script.sh", "run_segmentation" ]  # Pass the script name without .sh
+    entrypoint: [ "bash", "/root/run_chosen_script.sh", "run_segmentation_bids" ]  # Pass the script name without .sh
