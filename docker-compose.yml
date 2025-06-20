@@ -1,0 +1,17 @@
+# docker-compose.yml
+# Run the CAT12 Pipeline
+# on every *.nii file in the host folder `hires_backdrops/test`.
+version: "3.9"
+
+services:
+  cat12-pipeline:
+    image: calvinwhow/vbm:latest # built with Dockerfile.easyreg
+    container_name: cat12-pipeline
+    environment:
+      - THREADS=-1
+    # ── adjust the two host paths as needed ──────────────────────────
+    volumes:
+      - C:\Users\Calvin\Partners HealthCare Dropbox\Calvin Howard\studies\rimlf\test:/data  # /path/to/your/nifti/file:/root/data <-- Edit to provide files to warp
+      - C:\Users\Calvin\Documents\Software\DockerizedCat12\src:/root/scripts
+    # Ensure the script has Unix line endings before execution.
+    entrypoint: [ "bash", "/root/run_chosen_script.sh", "run_segmentation" ]  # Pass the script name without .sh
