@@ -1,6 +1,6 @@
 # Standalone VBM Processing Kit
 
-This project provides a set of Jupyter notebooks for processing voxel-based morphometry (VBM) data.
+This project provides a set of Jupyter notebooks for processing voxel-based morphometry (VBM) data with Atrophy PyPer.
 
 ## Dependencies
 
