@@ -1,17 +1,16 @@
 # docker-compose.yml
-# Run the CAT12 Pipeline
-# on every *.nii file in the host folder `hires_backdrops/test`.
 version: "3.9"
 
 services:
-  cat12-pipeline:
-    image: calvinwhow/vbm:latest # built with Dockerfile.easyreg
-    container_name: cat12-pipeline
+  neuroimaging-pipeline:
+    # image: calvinwhow/atrophy_pipeline:latest
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: containers/pipeline.Dockerfile
     environment:
       - THREADS=-1
-    # ── adjust the two host paths as needed ──────────────────────────
     volumes:
-      - 'D:\datasets\adni\neuroimaging\true_control\bids:/root/data'  # /path/to/your/nifti/file:/root/data <-- Edit to provide files to warp
-      - C:\Users\Calvin\Documents\Software\vbm\src:/root/scripts
-    # Ensure the script has Unix line endings before execution.
-    entrypoint: [ "bash", "/root/run_chosen_script.sh", "run_segmentation_bids" ]  # Pass the script name without .sh
+      - /Users/cu135/hires_backdrops/test/pipeline_test:/root/data       #<--- use this to mount the BIDS directory containing your T1 scans
+      - ${PWD}/scripts:/root/scripts                              # Provides access to new scripts to avoid rebuilding
+    command: [ "bash", "/root/scripts/run_pipeline.sh" ] 

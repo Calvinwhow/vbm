@@ -1,12 +1,6 @@
 numpy
 pandas
 scipy
-jax
-forestplot
 tqdm
-tensorly
-statsmodels
 nilearn
 natsort
-seaborn
-git+https://github.com/Calvinwhow/calvin_utils_project.git
