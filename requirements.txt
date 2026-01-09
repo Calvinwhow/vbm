@@ -1,6 +1,14 @@
+tensorflow==2.13.1
+torch
+voxelmorph
+pydicom
+Pillow
+
 numpy
 pandas
 scipy
 tqdm
+nibabel
 nilearn
 natsort
+matplotlib

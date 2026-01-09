@@ -130,15 +130,15 @@ matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.ownatlas = {''};
 matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.GM.warped = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.GM.mod = 1;
-matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WM.native = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WM.warped = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WM.mod = 1;
-matlabbatch{1}.spm.tools.cat.estwrite.output.WM.dartel = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.output.WM.dartel = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.native = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.warped = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.mod = 1;
-matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.dartel = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.dartel = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WMH.native = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WMH.warped = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WMH.mod = 0;
@@ -161,13 +161,13 @@ matlabbatch{1}.spm.tools.cat.estwrite.output.atlas.native = 0;
 
 % label 
 % background=0, CSF=1, GM=2, WM=3, WMH=4 (if opt.extopts.WMHC==3), SL=1.5 (if opt.extopts.SLC>0)
-matlabbatch{1}.spm.tools.cat.estwrite.output.label.native = 0;
-matlabbatch{1}.spm.tools.cat.estwrite.output.label.warped = 0;
+matlabbatch{1}.spm.tools.cat.estwrite.output.label.native = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.output.label.warped = 1;
 matlabbatch{1}.spm.tools.cat.estwrite.output.label.dartel = 0;
 
 % bias and noise corrected, global intensity normalized
 matlabbatch{1}.spm.tools.cat.estwrite.output.bias.native = 0;
-matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 0;
+matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 1;
 matlabbatch{1}.spm.tools.cat.estwrite.output.bias.dartel = 0;
 
 % bias and noise corrected, (locally - if LAS>0) intensity normalized
@@ -179,5 +179,5 @@ matlabbatch{1}.spm.tools.cat.estwrite.output.las.dartel = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.jacobianwarped = 0;
 
 % deformations, order is [forward inverse]
-matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [1 1];
+matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [0 0];
 

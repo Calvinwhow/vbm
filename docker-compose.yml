@@ -3,7 +3,7 @@ version: "3.9"
 
 services:
   neuroimaging-pipeline:
-    # image: calvinwhow/atrophy_pipeline:latest
+    image: calvinwhow/vbm-neuroimaging-pipeline:latest
     platform: linux/amd64
     build:
       context: .
@@ -12,5 +12,6 @@ services:
       - THREADS=-1
     volumes:
       - /Users/cu135/hires_backdrops/test/pipeline_test:/root/data       #<--- use this to mount the BIDS directory containing your T1 scans
-      - ${PWD}/scripts:/root/scripts                              # Provides access to new scripts to avoid rebuilding
-    command: [ "bash", "/root/scripts/run_pipeline.sh" ] 
+      # - ${PWD}/assets:/root/assets
+      # - ${PWD}/scripts:/root/scripts
+    command: [ "bash", "/root/scripts/run_pipeline.sh" ]

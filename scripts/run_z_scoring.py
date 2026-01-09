@@ -208,7 +208,7 @@ def _resolve_stat_path(base: Path | None, override: Path | None, name: str) -> P
         return override
     if not base:
         raise SystemExit(f"Missing path for {name}. Provide --control-stats-dir or explicit --{name.replace('_', '-')}.")
-    return base / f"{name}.nii"
+    return base / f"{name}.nii.gz"
 
 def save_df_to_nifti_bids(dataframes_dict, root, mask_path, analysis='tissue_segment_z_scores', ses='ses-01'):
     """
@@ -304,8 +304,8 @@ def load_control_stats(args: argparse.Namespace):
         _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.csf_std, "cerebrospinal_fluid_std")),
     )
     stats["composite"] = (
-        _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.composite_mean, "l2_norm_mean")),
-        _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.composite_std, "l2_norm_std")),
+        _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.composite_mean, "norm_mean")),
+        _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.composite_std, "norm_std")),
     )
     return stats
 
@@ -317,7 +317,7 @@ def compute_z_with_precalc_stats(expt_segments: Dict[str, "pd.DataFrame"], stats
     zscore_mask_dict = {}
     for tissue, df in expt_segments.items():
         mean, std = stats[tissue]
-        processed = process_tissue(df, pt_tiv)
+        processed = process_tissue(df, pt_tiv, threshold=0.2)
         z_arr = (processed.values - mean[:, np.newaxis]) / std[:, np.newaxis]
         z_df = pd.DataFrame(z_arr, index=processed.index, columns=processed.columns)
         if tissue == "cerebrospinal_fluid":

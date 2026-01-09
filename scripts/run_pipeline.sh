@@ -28,14 +28,14 @@ bash "${SCRIPT_DIR}/run_segmentation_bids.sh"
 echo "=== Step 1.1: Resampling CAT12 Segments ==="
 python "${SCRIPT_DIR}/run_resample_bids.py" \
     --base-dir               "${DATA_DIR}" \
-    --pattern                 "*/*/anat/mri/mwp*"
+    --pattern                 "*mri/mwp*"
 
 echo "=== Step 2.1: Atrophy Derivation ==="
 python "${SCRIPT_DIR}/run_z_scoring.py" \
     --experiments-root        "${DATA_DIR}" \
-    --experiments-gm-pattern  "*/*/anat/mri/mwp1*resamp*" \
-    --experiments-wm-pattern  "*/*/anat/mri/mwp2*resamp*" \
-    --experiments-csf-pattern "*/*/anat/mri/mwp3*resamp*" \
+    --experiments-gm-pattern  "*/*/mri/mwp1*resamp*" \
+    --experiments-wm-pattern  "*/*/mri/mwp2*resamp*" \
+    --experiments-csf-pattern "*/*/mri/mwp3*resamp*" \
     --control-stats-dir       "/root/assets/ctrl_dist" \
     --mask-path               "/root/assets/MNI152_T1_2mm_brain_mask.nii" \
     --session                 "${SESSION}"
@@ -51,8 +51,27 @@ echo "=== Step 3.1: Regional Atrophy Measurements ==="
 python "${SCRIPT_DIR}/measure_regional_atrophy.py" \
     --base-dir "${DATA_DIR}" \
     --session  "${SESSION}" \
-    --roi-dir  "/root/assets/rois" \
-    --mask-path "/root/assets/MNI152_T1_2mm_brain_mask.nii"
+    --roi-dir  "/root/assets/rois/anatomic_coarse" \
+    --mask-path "/root/assets/MNI152_T1_2mm_brain_mask.nii" \
+    --fname "regional_atrophy_coarse"
+python "${SCRIPT_DIR}/measure_regional_atrophy.py" \
+    --base-dir "${DATA_DIR}" \
+    --session  "${SESSION}" \
+    --roi-dir  "/root/assets/rois/aal_fine" \
+    --mask-path "/root/assets/MNI152_T1_2mm_brain_mask.nii"\
+    --fname "regional_atrophy_fine"
+python "${SCRIPT_DIR}/measure_regional_atrophy.py" \
+    --base-dir "${DATA_DIR}" \
+    --session  "${SESSION}" \
+    --roi-dir  "/root/assets/rois/jhu_81" \
+    --mask-path "/root/assets/MNI152_T1_2mm_brain_mask.nii"\
+    --fname "tract_atrophy"
+python "${SCRIPT_DIR}/measure_regional_atrophy.py" \
+    --base-dir "${DATA_DIR}" \
+    --session  "${SESSION}" \
+    --roi-dir  "/root/assets/rois/yeo_7" \
+    --mask-path "/root/assets/MNI152_T1_2mm_brain_mask.nii"\
+    --fname "network_atrophy"
 
 echo "=== Step 3.2: Disease Classification ==="
 python "${SCRIPT_DIR}/classify_disease.py" \

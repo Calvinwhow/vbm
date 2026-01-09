@@ -35,6 +35,8 @@ for T1_FILE in $T1_FILES; do
   else
     SUBJECT_DIR=$(dirname "$T1_FILE")                     # fall back to dirname of the T1.nii
   fi
+
+  T1_DIR=$(dirname "$T1_FILE") 
   
   # 2 - Run the segmentation
   if find "$SUBJECT_DIR" -type f -name "mwp*.nii" -print -quit | grep . > /dev/null ; then
@@ -50,13 +52,20 @@ for T1_FILE in $T1_FILES; do
   mkdir -p "$SUBJECT_DIR/mri"
   mkdir -p "$SUBJECT_DIR/report"
   mkdir -p "$SUBJECT_DIR/err"
+  mkdir -p "$SUBJECT_DIR/cat12"
 
-  find "$SUBJECT_DIR" -maxdepth 1 -type f -name "mwp*.nii" -exec mv -n {} "$SUBJECT_DIR/mri/" \;
-  find "$SUBJECT_DIR" -maxdepth 1 -type f -name "wm*.nii"  -exec mv -n {} "$SUBJECT_DIR/mri/" \;
-  find "$SUBJECT_DIR" -maxdepth 1 -type f -name "p0*.nii"  -exec mv -n {} "$SUBJECT_DIR/mri/" \;
+  find "$T1_DIR" -maxdepth 1 -type f -name "mwp*.nii" -exec mv -n {} "$SUBJECT_DIR/mri/" \;
+  find "$T1_DIR" -maxdepth 1 -type f -name "wm*.nii"  -exec mv -n {} "$SUBJECT_DIR/mri/" \;
+  find "$T1_DIR" -maxdepth 1 -type f -name "p0*.nii"  -exec mv -n {} "$SUBJECT_DIR/mri/" \;
+  find "$T1_DIR" -maxdepth 1 -type f -name "wp0*.nii"  -exec mv -n {} "$SUBJECT_DIR/mri/" \;
 
-  find "$SUBJECT_DIR" -maxdepth 1 -type f -name "*catreport*" -exec mv -n {} "$SUBJECT_DIR/report/" \;
-  find "$SUBJECT_DIR" -maxdepth 1 -type f -name "*catlog*"    -exec mv -n {} "$SUBJECT_DIR/err/" \;
+  find "$T1_DIR" -maxdepth 1 -type f -name "*catreport*" -exec mv -n {} "$SUBJECT_DIR/report/" \;
+  find "$T1_DIR" -maxdepth 1 -type f -name "*catlog*"    -exec mv -n {} "$SUBJECT_DIR/err/" \;
+  find "$T1_DIR" -maxdepth 1 -type f -name "cat*.mat"  -exec mv -n {} "$SUBJECT_DIR/cat12/" \;
+  find "$T1_DIR" -maxdepth 1 -type f -name "cat*.xml"  -exec mv -n {} "$SUBJECT_DIR/cat12/" \;
+  find "$T1_DIR" -maxdepth 1 -type f -name "rp*_rigid.nii"  -exec mv -n {} "$SUBJECT_DIR/cat12/" \;
+  find "$T1_DIR" -maxdepth 1 -type f -name "iy_*.nii"  -exec mv -n {} "$SUBJECT_DIR/cat12/" \;
+  find "$T1_DIR" -maxdepth 1 -type f -name "y_*.nii"  -exec mv -n {} "$SUBJECT_DIR/cat12/" \;
 
   echo "Finished organizing outputs for $SUBJECT_DIR"
 

@@ -51,7 +51,7 @@ echo "Burning target into native images in: $DERIV"
 ## -- Main Code -------------------------------------------------------
 shopt -s nullglob
 
-flos=("${SUBJECT_SES_DIR}/anat/T1.nii"*)
+flos=("${SUBJECT_SES_DIR}/anat/"*T1*.nii*)
 # flos=("${SUBJECT_SES_DIR}/anat/T1.nii"*) commented out to avoid matching deformation fields (iy_T1, y_T1), 
 # probability maps (mwp*T1, rp*T1), and other CAT12 outputs
 if [[ ${#flos[@]} -eq 0 ]]; then

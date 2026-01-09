@@ -98,10 +98,10 @@ def compute_roi_means(composite_path: Path, roi_arrays: Dict[str, np.ndarray]) -
     return df.sort_values(by="Atrophy_Z", ascending=False).reset_index(drop=True)
 
 
-def save_roi_csv(df: pd.DataFrame, base_dir: Path, sub: str, ses: str) -> Path:
+def save_roi_csv(df: pd.DataFrame, base_dir: Path, sub: str, ses: str, fname: str) -> Path:
     out_dir = base_dir / sub / ses / "measurements"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "regional_atrophy.csv"
+    out_path = out_dir / f"{fname}.csv"
     df.to_csv(out_path, index=False)
     return out_path
 
@@ -112,6 +112,7 @@ def main():
     parser.add_argument("--session", default=DEFAULT_SES, help="Session label (e.g., ses-01).")
     parser.add_argument("--roi-dir", type=Path, default=DEFAULT_ROI_DIR, help="Directory containing ROI NIfTIs.")
     parser.add_argument("--mask-path", type=Path, default=DEFAULT_MASK, help="Brain mask (for DamageScorer init).")
+    parser.add_argument("--fname", type=str, default="regional_atrophy", help="Name for output csv.")
     args = parser.parse_args()
 
     base_dir = args.base_dir
@@ -132,7 +133,7 @@ def main():
     for comp_path in composites:
         sub, ses = _extract_sub_ses_from_path(comp_path)
         df = compute_roi_means(comp_path, roi_df)
-        out_path = save_roi_csv(df, base_dir, sub, ses)
+        out_path = save_roi_csv(df, base_dir, sub, ses, args.fname)
         print(f"Saved ROI means for {sub}/{ses} to {out_path}")
 
 

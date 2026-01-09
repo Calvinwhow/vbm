@@ -97,32 +97,7 @@ def main() -> None:
         raise SystemExit(f"Base directory not found: {args.base_dir}")
 
     patterns: List[str] = args.patterns or ["**/*.nii", "**/*.nii.gz"]
-    print(f"[DEBUG] Searching in base_dir: {args.base_dir}")
-    print(f"[DEBUG] Using patterns: {patterns}")
-    print(f"[DEBUG] base_dir exists: {args.base_dir.exists()}")
-    print(f"[DEBUG] base_dir is_dir: {args.base_dir.is_dir()}")
-    
     matched = list(iter_inputs(args.base_dir, patterns))
-    print(f"[DEBUG] Number of files matched: {len(matched)}")
-    
-    if matched:
-        print(f"[DEBUG] First few matched files:")
-        for f in matched[:5]:
-            print(f"  - {f}")
-    else:
-        print(f"[DEBUG] No files matched. Checking base_dir contents:")
-        try:
-            all_items = list(args.base_dir.rglob("*"))
-            print(f"  Total items in base_dir (recursive): {len(all_items)}")
-            nii_like = [f for f in all_items if f.suffix in ['.nii', '.gz'] or '.nii' in f.name]
-            print(f"  Files with .nii or .gz extension: {len(nii_like)}")
-            if nii_like:
-                print(f"  Sample nii-like files:")
-                for f in nii_like[:10]:
-                    print(f"    - {f}")
-        except Exception as e:
-            print(f"  Error listing directory: {e}")
-    
     if not matched:
         raise SystemExit(f"No inputs matched patterns {patterns} under {args.base_dir}")
 

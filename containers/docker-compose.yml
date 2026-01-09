@@ -1,0 +1,31 @@
+# docker-compose.yml
+# INSTRUCTIONS
+# This is a docker-compose file which requires you have docker desktop installed.
+# The docker image expects you have a BIDS-style directory with T1 weighted MRIs in it. 
+# The expected directory is
+#    dataset/
+#       |-------sub-01/
+#       |          |----ses-01/
+#       |                |-------anat/
+#       |                          |----T1.nii.gz
+#       |--------sub-02/
+#       .
+#       . 
+#       .
+#       |--------sub-N/
+
+# To run this file, replace /path/to/bids/directory/root with the absolute path to 
+# the root of the BIDS directory (labelled 'dataset' in the example above)
+# Then run docker-compose up and wait. 
+
+version: "3.9"
+
+services:
+  neuroimaging-pipeline:
+    image: calvinwhow/vbm-neuroimaging-pipeline:latest
+    platform: linux/amd64
+    environment:
+      - THREADS=-1                                    
+    volumes:
+      - /path/to/bids/directory/root:/root/data       #<--- Edit this. Path left of the colon mounts the BIDS directory containing your T1 scans. Do not change path after :/root/data
+    command: [ "bash", "/root/scripts/run_pipeline.sh" ] 
