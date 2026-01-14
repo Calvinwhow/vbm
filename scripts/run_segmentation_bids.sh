@@ -41,7 +41,6 @@ for T1_FILE in $T1_FILES; do
   # 2 - Run the segmentation
   if find "$SUBJECT_DIR" -type f -name "mwp*.nii" -print -quit | grep . > /dev/null ; then
     echo "Segmentation already completed for: $T1_FILE. Skipping."
-    continue
   else
     echo "Running CAT12 segmentation on: $T1_FILE"
     ${CAT_SCRIPTS}/cat_standalone.sh -b /root/scripts/cat_standalone_segment_calvin.m "$T1_FILE"
