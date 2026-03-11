@@ -43,7 +43,7 @@ def derive_output_path(inp_path: str) -> str:
         stem, ext = fname[:-4], ".nii"
     else:
         stem, ext = os.path.splitext(fname)
-    stem = stem + "_resamp"
+    stem = stem + "_resampled"
     return os.path.join(dirname, f"{stem}{ext}")
 
 

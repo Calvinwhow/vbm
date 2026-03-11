@@ -256,10 +256,14 @@ def save_df_to_nifti_bids(dataframes_dict, root, mask_path, analysis='tissue_seg
         arr = arr.reshape(mask_data.shape)
         return nib.Nifti1Image(arr, mask_img.affine)
 
-    def _save_nifti(img, out_path):
-        if Path(out_path).exists():
+    def _save_nifti(img, out_path, overwrite=True):
+        if Path(out_path).exists() and not overwrite:
             print(f"Skipping. File already exists: {out_path}")
             return
+        elif Path(out_path).exists() and overwrite:
+            print(f"Overwriting: {out_path}")
+        else: 
+            print(f"Saving new: {out_path}")
         Path(out_path).parent.mkdir(parents=True, exist_ok=True)
         nib.save(img, out_path)
     

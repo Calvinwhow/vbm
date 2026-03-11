@@ -1,6 +1,6 @@
-tensorflow==2.13.1
-torch
-voxelmorph
+# tensorflow==2.13.1
+# torch
+# voxelmorph
 pydicom
 Pillow
 

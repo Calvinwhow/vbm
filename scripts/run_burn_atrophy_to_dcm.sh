@@ -70,41 +70,56 @@ for flo in "${flos[@]}"; do
   echo "Target: ${trgt_base}"
 
   # 1) registration – writes forward field (fwd)
-  python /root/easyreg/mri_easyreg.py \
+  if ! python /root/easyreg/mri_easyreg.py \
     --flo       "${flo}" \
     --ref       "${REF_IMG}" \
     --ref_seg   "${REF_SEG}" \
     --flo_seg   "${DERIV}/${flo_base}_seg.nii.gz" \
     --fwd_field "${DERIV}/${flo_base}_fwd.nii.gz" \
     --bak_field "${DERIV}/${flo_base}_bak.nii.gz" \
-    --threads   "${THREADS}"
+    --threads   "${THREADS}"; then
+    echo "Error in registration for ${flo_base}; skipping to next."
+    continue
+  fi
 
   # 1.5) clean up the atrophy
-  python /root/scripts/clean_atrophy.py \
+  if ! python /root/scripts/clean_atrophy.py \
     --i "${TRGT}" \
     --m "/root/assets/MNI152_T1_2mm_brain_mask.nii" \
-    --o "${DERIV}/${trgt_base}_cleaned.nii.gz"
+    --o "${DERIV}/${trgt_base}_cleaned.nii.gz"; then
+    echo "Error cleaning atrophy for ${flo_base}; skipping to next."
+    continue
+  fi
   
   ## 2) warp target to native space
-  python /root/easyreg/mri_easywarp.py \
+  if ! python /root/easyreg/mri_easywarp.py \
     --i       "${DERIV}/${trgt_base}_cleaned.nii.gz" \
     --o       "${DERIV}/${trgt_base}_native.nii.gz" \
     --field   "${DERIV}/${flo_base}_bak.nii.gz" \
-    --threads "${THREADS}"
+    --threads "${THREADS}"; then
+    echo "Error warping target for ${flo_base}; skipping to next."
+    continue
+  fi
 
   ## 3) burn target into the native image
-  python /root/scripts/burn_target_into_img.py \
+  if ! python /root/scripts/burn_target_into_img.py \
     --i       "${flo}" \
     --t       "${DERIV}/${trgt_base}_native.nii.gz" \
     --o       "${DERIV}/${flo_base}_burned_in_${trgt_base}.nii.gz" \
     --m       "sum" \
-    --thresh  "2.0"   # any values over 2 are considered atrophic
+    --thresh  "2.0"; then
+    echo "Error burning target for ${flo_base}; skipping to next."
+    continue
+  fi
 
   ## 4) Convert the burned image to DCM
-  python /root/scripts/write_burned_dcm.py \
+  if ! python /root/scripts/write_burned_dcm.py \
     --i       "${DERIV}/${flo_base}_burned_in_${trgt_base}.nii.gz"  \
     --o       "${DERIV}/${flo_base}_burned_in_${trgt_base}_dicom" \
-    --b       "${flo}" 
+    --b       "${flo}"; then
+    echo "Error writing DICOM for ${flo_base}; skipping to next."
+    continue
+  fi
     
 done
 

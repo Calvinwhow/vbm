@@ -5,6 +5,7 @@ set -euo pipefail
 # Set the path to the CAT12 standalone directory and MATLAB Runtime
 CAT12_DIR=${CAT_PATH:-}
 MATLAB_RUNTIME=${MCRROOT:-}
+FIND_ALL=false
 
 if [[ -z "$CAT12_DIR" || -z "$MATLAB_RUNTIME" ]]; then
   echo "CAT_PATH and MCRROOT must be set for CAT12 segmentation."
@@ -16,7 +17,13 @@ BASE_DIR="${DATA_DIR:-/root/data}"
 FILE_TO_FIND="*T1*.nii*"
 
 # Find all T1-weighted NIfTI files in the BIDS directory structure
-T1_FILES=$(find "$BASE_DIR" -type f -name "$FILE_TO_FIND" | sort)
+if $FIND_ALL; then
+  echo "Will recursively search for all $FILE_TO_FIND in: $BASE_DIR"
+  T1_FILES=$(find "$BASE_DIR" -type f -name "$FILE_TO_FIND" | sort)
+else
+  echo "Will only search for $FILE_TO_FIND in: $BASE_DIR/sub-*/ses-*/$FILE_TO_FIND & $BASE_DIR/sub-*/ses-*/anat/$FILE_TO_FIND"
+  T1_FILES=$(find "$BASE_DIR" -maxdepth 1 -type f \( -path "$BASE_DIR/sub-*/ses-*/$FILE_TO_FIND" -o -path "$BASE_DIR/sub-*/ses-*/anat/$FILE_TO_FIND" \) | sort)
+fi
 
 if [ -z "$T1_FILES" ]; then
   echo "No T1-weighted NIfTI files found in the BIDS directory."

@@ -179,5 +179,5 @@ matlabbatch{1}.spm.tools.cat.estwrite.output.las.dartel = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.jacobianwarped = 0;
 
 % deformations, order is [forward inverse]
-matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [0 0];
+matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [1 1];
 

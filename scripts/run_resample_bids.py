@@ -14,7 +14,7 @@ DEFAULT_MASK = Path("/root/assets/MNI152_T1_2mm_brain_mask.nii")
 
 
 def derive_output_path(inp_path: Path) -> Path:
-    """Create an output filename with _resamp suffix, preserving .nii/.nii.gz."""
+    """Create an output filename with _resampled suffix, preserving .nii/.nii.gz."""
     stem = inp_path.name
     if stem.endswith(".nii.gz"):
         stem = stem[:-7]
@@ -25,7 +25,7 @@ def derive_output_path(inp_path: Path) -> Path:
     else:
         ext = inp_path.suffix
         stem = stem[: -len(ext)] if ext else stem
-    return inp_path.with_name(f"{stem}_resamp{ext}")
+    return inp_path.with_name(f"{stem}_resampled{ext}")
 
 
 def iter_inputs(base: Path, patterns: Iterable[str]) -> Iterable[Path]:
@@ -40,7 +40,7 @@ def resample_file(inp_path: Path, ref_path: Path, interpolation: str, overwrite:
     if out_path.exists() and not overwrite:
         print(f"Skipping (exists): {out_path}")
         return None
-    if "resamp" in str(inp_path):
+    if "resampled" in str(inp_path):
         print(f"Skipping (exists): {out_path}")
         return None
 

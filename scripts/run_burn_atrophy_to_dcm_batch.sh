@@ -8,7 +8,7 @@ SESSION=${SESSION:-ses-01}
 SCRIPT_DIR=${SCRIPT_DIR:-/root/scripts}
 
 echo "Searching for composite atrophy maps under ${DATA_DIR} for ${SESSION}..."
-atrophy_files=$(find "${DATA_DIR}" -type f -path "*/${SESSION}/thresholded_tissue_segment_z_scores/*_composite.nii*" | sort || true)
+atrophy_files=$(find "${DATA_DIR}" -type f -path "*/${SESSION}/unthresholded_tissue_segment_z_scores/*_composite*4*.nii*" | sort || true)
 
 if [[ -z "${atrophy_files}" ]]; then
   echo "No composite atrophy maps found to burn into native space."

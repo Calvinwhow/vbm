@@ -5,13 +5,13 @@ services:
   neuroimaging-pipeline:
     image: calvinwhow/vbm-neuroimaging-pipeline:latest
     platform: linux/amd64
-    build:
-      context: .
-      dockerfile: containers/pipeline.Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: containers/pipeline.Dockerfile
     environment:
       - THREADS=-1
     volumes:
-      - /Users/cu135/hires_backdrops/test/pipeline_test:/root/data       #<--- use this to mount the BIDS directory containing your T1 scans
-      # - ${PWD}/assets:/root/assets
-      # - ${PWD}/scripts:/root/scripts
-    command: [ "bash", "/root/scripts/run_pipeline.sh" ]
+      - /Users/cu135/hires_backdrops/low_hpc_atrophy:/root/data       #<--- use this to mount the BIDS directory containing your T1 scans
+      # - ${PWD}/assets/crtl_dist_young:/root/assets/ctrl_dist
+      - ${PWD}/scripts:/root/scripts
+    command: ["bash", "/root/scripts/run_pipeline.sh" ]

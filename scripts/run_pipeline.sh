@@ -5,7 +5,7 @@ echo "=== Starting neuroimaging pipeline ==="
 
 THREADS=${THREADS:-1}
 ORGANIZE_SEGMENTATION=${ORGANIZE_SEGMENTATION:-true}
-RUN_STEP_2_2=false
+RUN_STEP_2_2=true
 
 export THREADS
 
@@ -15,7 +15,7 @@ echo "SESSION=$SESSION"
 echo "THREADS=$THREADS"
 
 echo "=== Validating input T1 images ==="
-T1_FILES=$(find "${DATA_DIR}" -type f -path "*/${SESSION}/anat/*T1*.nii*" | sort || true)
+T1_FILES=$(find "${DATA_DIR}" -type f -path "*/${SESSION}/anat/*T1*.nii*" ! -name "._*" | sort || true)
 if [[ -z "${T1_FILES}" ]]; then
   echo "No T1-weighted NIfTI files found under ${DATA_DIR}/**/${SESSION}/anat. Ensure Step 0 placed files (e.g., ${DATA_DIR}/subject-01/${SESSION}/anat/*T1*.nii*)."
   exit 1
@@ -23,7 +23,10 @@ fi
 echo "${T1_FILES}"
 
 echo "=== Step 1: CAT12 segmentation ==="
-bash "${SCRIPT_DIR}/run_segmentation_bids.sh"
+while IFS= read -r T1_FILE; do
+  bash "${SCRIPT_DIR}/run_segmentation_single.sh" "$T1_FILE"
+done <<< "$T1_FILES"
+# bash "${SCRIPT_DIR}/run_segmentation_single.sh $T1_FILE"
 
 echo "=== Step 1.1: Resampling CAT12 Segments ==="
 python "${SCRIPT_DIR}/run_resample_bids.py" \
@@ -33,19 +36,29 @@ python "${SCRIPT_DIR}/run_resample_bids.py" \
 echo "=== Step 2.1: Atrophy Derivation ==="
 python "${SCRIPT_DIR}/run_z_scoring.py" \
     --experiments-root        "${DATA_DIR}" \
-    --experiments-gm-pattern  "*/*/mri/mwp1*resamp*" \
-    --experiments-wm-pattern  "*/*/mri/mwp2*resamp*" \
-    --experiments-csf-pattern "*/*/mri/mwp3*resamp*" \
+    --experiments-gm-pattern  "*/*/mri/mwp1*resampled*" \
+    --experiments-wm-pattern  "*/*/mri/mwp2*resampled*" \
+    --experiments-csf-pattern "*/*/mri/mwp3*resampled*" \
     --control-stats-dir       "/root/assets/ctrl_dist" \
     --mask-path               "/root/assets/MNI152_T1_2mm_brain_mask.nii" \
     --session                 "${SESSION}"
 
-echo "=== Step 2.2: Atrophy to Patient Space ==="
-if [[ "${RUN_STEP_2_2}" == "true" ]]; then
-  bash "${SCRIPT_DIR}/run_burn_atrophy_to_dcm_batch.sh"
-else
-  echo "Skipping Step 2.2 (RUN_STEP_2_2=false)"
-fi
+echo "=== Step 2.3: Apply Smoothing ==="
+python "${SCRIPT_DIR}/apply_smoothing.py" \
+    --base-dir "${DATA_DIR}" \
+    --session  "${SESSION}" \
+    --fwhm 4 
+
+
+echo "=== Step 2.3: Warp Atrophy to Patient Space ==="
+bash "${SCRIPT_DIR}/run_atrophy_to_patient_space.sh"
+
+# echo "=== Step 2.3: EasyReg and DICOM Generation ==="
+# if [[ "${RUN_STEP_2_2}" == "true" ]]; then
+#   bash "${SCRIPT_DIR}/run_burn_atrophy_to_dcm_batch.sh"
+# else
+#   echo "Skipping Step 2.3 (RUN_STEP_2_2=false)"
+# fi
 
 echo "=== Step 3.1: Regional Atrophy Measurements ==="
 python "${SCRIPT_DIR}/measure_regional_atrophy.py" \
