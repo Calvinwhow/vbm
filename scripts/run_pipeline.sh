@@ -9,15 +9,16 @@ RUN_STEP_2_2=true
 
 export THREADS
 
+echo "THREADS=$THREADS"
 echo "DATA_DIR=$DATA_DIR"
 echo "SCRIPT_DIR=$SCRIPT_DIR"
 echo "SESSION=$SESSION"
-echo "THREADS=$THREADS"
+echo "SUBFOLDER=$SUBFOLDER"
 
 echo "=== Validating input T1 images ==="
-T1_FILES=$(find "${DATA_DIR}" -type f -path "*/${SESSION}/anat/*T1*.nii*" ! -name "._*" | sort || true)
+T1_FILES=$(find "${DATA_DIR}" -type f -path "*/${SESSION}/${SUBFOLDER}/*T1*.nii*" ! -name "._*" | sort || true)
 if [[ -z "${T1_FILES}" ]]; then
-  echo "No T1-weighted NIfTI files found under ${DATA_DIR}/**/${SESSION}/anat. Ensure Step 0 placed files (e.g., ${DATA_DIR}/subject-01/${SESSION}/anat/*T1*.nii*)."
+  echo "No T1-weighted NIfTI files found under ${DATA_DIR}/*/${SESSION}/${SUBFOLDER}."
   exit 1
 fi
 echo "${T1_FILES}"

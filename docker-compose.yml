@@ -10,8 +10,10 @@ services:
     #   dockerfile: containers/pipeline.Dockerfile
     environment:
       - THREADS=-1
+      - SESSION=ses-pre # <----- use this to specify the particular name of the session folder (i.e. sub-01/ses-01/ANAT/T1.nii.gz -> ses-01)
+      - SUBFOLDER=ANAT # <----- use this to specify the particular name of the subfolder your T1s are in (i.e. sub-01/ses-01/ANAT/T1.nii.gz -> ANAT)
     volumes:
-      - /Users/cu135/hires_backdrops/low_hpc_atrophy:/root/data       #<--- use this to mount the BIDS directory containing your T1 scans
+      - /Volumes/OneTouch/datasets/01z_SungshinKim_ParietalTMS-Atrophy/BIDS:/root/data       #<--- use this to mount the BIDS directory containing your T1 scans
       # - ${PWD}/assets/crtl_dist_young:/root/assets/ctrl_dist
       - ${PWD}/scripts:/root/scripts
     command: ["bash", "/root/scripts/run_pipeline.sh" ]
