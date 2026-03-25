@@ -4,20 +4,29 @@ set -euo pipefail
 echo "=== Starting neuroimaging pipeline ==="
 
 THREADS=${THREADS:-1}
+SESSION=${SESSION:-ses-01}
+T1_DIR=${T1_DIR:-ANAT}
+T1_FILE=${T1_FILE:-T1}
 ORGANIZE_SEGMENTATION=${ORGANIZE_SEGMENTATION:-true}
-RUN_STEP_2_2=true
+RUN_STEP_2_2=${RUN_STEP_2_2:-true}
 
 export THREADS
+export SCRIPT_DIR
+export T1_DIR
+export SESSION
+export T1_FILE
 
 echo "DATA_DIR=$DATA_DIR"
 echo "SCRIPT_DIR=$SCRIPT_DIR"
 echo "SESSION=$SESSION"
+echo "T1_DIR=$T1_DIR"
+echo "T1_FILE=$T1_FILE"
 echo "THREADS=$THREADS"
 
 echo "=== Validating input T1 images ==="
-T1_FILES=$(find "${DATA_DIR}" -type f -path "*/${SESSION}/anat/*T1*.nii*" ! -name "._*" | sort || true)
+T1_FILES=$(find "${DATA_DIR}" -type f -path "*/${SESSION}/${T1_DIR}/*${T1_FILE}*.nii*" ! -name "._*" | sort || true)
 if [[ -z "${T1_FILES}" ]]; then
-  echo "No T1-weighted NIfTI files found under ${DATA_DIR}/**/${SESSION}/anat. Ensure Step 0 placed files (e.g., ${DATA_DIR}/subject-01/${SESSION}/anat/*T1*.nii*)."
+  echo "No T1-weighted NIfTI files found under ${DATA_DIR}/*/${SESSION}/${T1_DIR}. Ensure Step 0 placed files (e.g., ${DATA_DIR}/subject-01/${SESSION}/${T1_DIR}/*${T1_FILE}*.nii*)."
   exit 1
 fi
 echo "${T1_FILES}"
@@ -26,7 +35,6 @@ echo "=== Step 1: CAT12 segmentation ==="
 while IFS= read -r T1_FILE; do
   bash "${SCRIPT_DIR}/run_segmentation_single.sh" "$T1_FILE"
 done <<< "$T1_FILES"
-# bash "${SCRIPT_DIR}/run_segmentation_single.sh $T1_FILE"
 
 echo "=== Step 1.1: Resampling CAT12 Segments ==="
 python "${SCRIPT_DIR}/run_resample_bids.py" \

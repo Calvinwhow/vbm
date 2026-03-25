@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import argparse
 from pathlib import Path
-
+import os
 from nilearn.image import smooth_img
 
 
 DEFAULT_BASE = Path("/root/data")
-DEFAULT_SES = "ses-01"
-
+DEFAULT_SES = os.getenv("SESSION", "ses-01")
+DEFAULT_GLOB = os.getenv("SEGMENTS", "*_composite.nii*")
 
 def _split_nii(path: Path):
     name = path.name
@@ -34,7 +34,7 @@ def main() -> int:
     suffix = f"_s{args.fwhm:g}"
     targets = []
     for analysis in analysis_dirs:
-        pattern = f"*/{args.session}/{analysis}/*_composite.nii*"
+        pattern = f"*/{args.session}/{analysis}/{DEFAULT_GLOB}"
         targets.extend(args.base_dir.glob(pattern))
 
     if not targets:

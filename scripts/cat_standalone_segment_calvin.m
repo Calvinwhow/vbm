@@ -82,7 +82,7 @@ matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.close_parahipp = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.SRP = 22;
 
 % set this to 1 for skipping preprocessing if already processed data exist
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.admin.lazy = 0;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.admin.lazy = 1;
 
 % catch errors: 0 - stop with error (default); 1 - catch preprocessing errors (requires MATLAB 2008 or higher); 
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.admin.ignoreErrors = 1;
