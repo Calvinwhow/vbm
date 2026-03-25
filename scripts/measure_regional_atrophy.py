@@ -52,7 +52,7 @@ def _load_roi_arrays(roi_paths: Iterable[Path]) -> Dict[str, np.ndarray]:
 def _find_composite_maps(base_dir: Path, session: str) -> Iterable[Path]:
     """Searches <sub>/<ses>/<unthresholded...>/<composite.nii>"""
     pattern = f"*/{session}/unthresholded_tissue_segment_z_scores/*_composite.nii*"
-    return base_dir.glob(pattern)
+    return (p for p in base_dir.glob(pattern) if not p.name.startswith("._"))
 
 
 def _extract_sub_ses_from_path(path: Path) -> Tuple[str, str]:

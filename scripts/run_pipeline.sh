@@ -79,19 +79,19 @@ python "${SCRIPT_DIR}/measure_regional_atrophy.py" \
     --base-dir "${DATA_DIR}" \
     --session  "${SESSION}" \
     --roi-dir  "/root/assets/rois/aal_fine" \
-    --mask-path "/root/assets/MNI152_T1_2mm_brain_mask.nii"\
+    --mask-path "/root/assets/MNI152_T1_2mm_brain_mask.nii" \
     --fname "regional_atrophy_fine"
 python "${SCRIPT_DIR}/measure_regional_atrophy.py" \
     --base-dir "${DATA_DIR}" \
     --session  "${SESSION}" \
     --roi-dir  "/root/assets/rois/jhu_81" \
-    --mask-path "/root/assets/MNI152_T1_2mm_brain_mask.nii"\
+    --mask-path "/root/assets/MNI152_T1_2mm_brain_mask.nii" \
     --fname "tract_atrophy"
 python "${SCRIPT_DIR}/measure_regional_atrophy.py" \
     --base-dir "${DATA_DIR}" \
     --session  "${SESSION}" \
     --roi-dir  "/root/assets/rois/yeo_7" \
-    --mask-path "/root/assets/MNI152_T1_2mm_brain_mask.nii"\
+    --mask-path "/root/assets/MNI152_T1_2mm_brain_mask.nii" \
     --fname "network_atrophy"
 
 echo "=== Step 3.2: Disease Classification ==="

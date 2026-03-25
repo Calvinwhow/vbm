@@ -5,8 +5,7 @@ DATA_DIR=${DATA_DIR:-/root/data}
 SESSION=${SESSION:-ses-01}
 THREADS=${THREADS:-1}
 ATROPHY_PATTERNS=(
-  "*_composite.nii*"
-  "*_composite_s*.nii*"
+  "*.nii*"
 )
 
 echo "Scanning ${DATA_DIR} for ${SESSION} sessions..."
@@ -33,6 +32,7 @@ find "${DATA_DIR}" -type d -path "*/${SESSION}" | while read -r SES_DIR; do
   fi
 
   for atrophy_file in "${atrophy_files[@]}"; do
+    [[ "$(basename "${atrophy_file}")" == ._* ]] && continue
     ATROPHY_BASE="$(basename "${atrophy_file}")"
     ATROPHY_BASE="${ATROPHY_BASE%.nii.gz}"
     ATROPHY_BASE="${ATROPHY_BASE%.nii}"

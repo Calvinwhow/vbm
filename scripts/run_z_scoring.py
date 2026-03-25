@@ -39,34 +39,52 @@ from __future__ import annotations
 import os
 import argparse
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Iterable, List
+from glob import glob
 
 import numpy as np
 import pandas as pd
 
 import nibabel as nib
-from calvin_utils.file_utils.import_functions import GiiNiiFileImport
 from calvin_utils.nifti_utils.matrix_utilities import import_nifti_to_numpy_array
-from calvin_utils.vbm_utils.composite_atrophy_mapper import generate_norm, generate_norm_map, generate_tensor, prepocess_dict
-from calvin_utils.vbm_utils.loading import import_segments
-from calvin_utils.vbm_utils.processing import get_tiv, process_atrophy, process_tissue, save_nifti_to_bids
+from calvin_utils.vbm_utils.composite_atrophy_mapper import generate_norm_map, prepocess_dict, generate_tensor, generate_norm
+from calvin_utils.vbm_utils.processing import get_tiv, process_atrophy, process_tissue
 
 DEFAULT_MASK = Path("/root/assets/MNI152_T1_2mm_brain_mask.nii")
+MAX_BATCH_SIZE = 100
 
-def load_segments(label: str, base_dir: Path, gm_pattern: str, wm_pattern: str, csf_pattern: str) -> Dict[str, "pd.DataFrame"]:
-    """
-    Loads in each patient's MWP file into a dataframe, 
-    
-    :param label: Corresponds to whether experimental or control patients are being loaded. For logging only. 
-    :param base_dir: The root to start globbing from.
-    :param gm_pattern: File match for grey matter. 
-    :param wm_pattern: File match for white matter. 
-    :param csf_pattern: File match for CSF. 
-    :return: Dictionary with a K:V pair for each MWP segment, where keys are dataframes for the corresponding segment
-    """
-    print(f"Loading {label} segments from {base_dir} ...")
-    segments = import_segments(base_dir=str(base_dir), gm_pattern=gm_pattern, wm_pattern=wm_pattern, csf_pattern=csf_pattern, full_path=True)
-    return segments
+def _subject_key(path: Path) -> str:
+    parts = path.parts
+    subj = next((p for p in parts if p.startswith(("sub-", "subject-", "subid-"))), None)
+    ses = next((p for p in parts if p.startswith("ses-")), None)
+    if subj and ses:
+        return f"{subj}/{ses}"
+    return subj or str(path)
+
+def _glob_map(base_dir: Path, pattern: str) -> Dict[str, Path]:
+    files = (Path(p) for p in sorted(glob(str(base_dir / pattern))))
+    return {_subject_key(p): p for p in files}
+
+def _load_df(files: Iterable[Path]) -> pd.DataFrame:
+    arrays = []
+    cols = []
+    for f in files:
+        arr = import_nifti_to_numpy_array(str(f))
+        if arr is None:
+            continue
+        cols.append(str(f))
+        arrays.append(np.asarray(arr).flatten())
+    if not arrays:
+        return pd.DataFrame()
+    data = np.stack(arrays, axis=1)
+    return pd.DataFrame(data, columns=cols)
+
+def _segments_from_maps(gm_map, wm_map, csf_map, subjects: List[str]) -> Dict[str, "pd.DataFrame"]:
+    return {
+        "grey_matter": _load_df(gm_map[s] for s in subjects),
+        "white_matter": _load_df(wm_map[s] for s in subjects),
+        "cerebrospinal_fluid": _load_df(csf_map[s] for s in subjects),
+    }
 
 def run_pipeline(args: argparse.Namespace) -> None:
     """
@@ -93,50 +111,55 @@ def run_pipeline(args: argparse.Namespace) -> None:
 
     # Imports
     ctrl_segments = None
+    z_ctrl = None
     if not use_precalc_stats:
-        ctrl_segments = load_segments(
-            label="control",
-            base_dir=args.controls_root,
-            gm_pattern=args.controls_gm_pattern,
-            wm_pattern=args.controls_wm_pattern,
-            csf_pattern=args.controls_csf_pattern
-        )
-
-    expt_segments = load_segments(
-        label="experimental",
-        base_dir=args.experiments_root,
-        gm_pattern=args.experiments_gm_pattern,
-        wm_pattern=args.experiments_wm_pattern,
-        csf_pattern=args.experiments_csf_pattern
-    )
-
-    # Atrophy Calculation
-    if use_precalc_stats:
-        stats = load_control_stats(args)
-        atrophy, atrophy_thresholded = compute_z_with_precalc_stats(expt_segments, stats)
-        composite = compute_composite_with_precalc_stats(atrophy, stats)
-    else:
-        atrophy, atrophy_thresholded, _ = process_atrophy(expt_segments, ctrl_segments)
+        ctrl_gm = _glob_map(args.controls_root, args.controls_gm_pattern)
+        ctrl_wm = _glob_map(args.controls_root, args.controls_wm_pattern)
+        ctrl_csf = _glob_map(args.controls_root, args.controls_csf_pattern)
+        ctrl_subjects = sorted(set(ctrl_gm) & set(ctrl_wm) & set(ctrl_csf))
+        if not ctrl_subjects:
+            raise SystemExit("No overlapping control subjects found across GM/WM/CSF patterns.")
+        ctrl_segments = _segments_from_maps(ctrl_gm, ctrl_wm, ctrl_csf, ctrl_subjects)
         z_ctrl, _, _ = process_atrophy(data_dict=ctrl_segments, ctrl_dict=ctrl_segments)
-        composite, _, _ = generate_norm_map(pt_dict=atrophy, ctrl_dict=z_ctrl)
-    atrophy["composite"] = composite
-    atrophy_thresholded["composite"] = composite.where(composite > 0, 0)
 
-    # Save outputs
-    save_df_to_nifti_bids(
-        atrophy,
-        root=args.experiments_root,
-        mask_path=args.mask_path,
-        analysis="unthresholded_tissue_segment_z_scores",
-        ses=args.session,
-    )
-    save_df_to_nifti_bids(
-        atrophy_thresholded,
-        root=args.experiments_root,
-        mask_path=args.mask_path,
-        analysis="thresholded_tissue_segment_z_scores",
-        ses=args.session,
-    )
+    gm_map = _glob_map(args.experiments_root, args.experiments_gm_pattern)
+    wm_map = _glob_map(args.experiments_root, args.experiments_wm_pattern)
+    csf_map = _glob_map(args.experiments_root, args.experiments_csf_pattern)
+    subjects = sorted(set(gm_map) & set(wm_map) & set(csf_map))
+    if not subjects:
+        raise SystemExit("No overlapping experimental subjects found across GM/WM/CSF patterns.")
+
+    stats = load_control_stats(args) if use_precalc_stats else None
+    total = len(subjects)
+    batch_size = min(MAX_BATCH_SIZE, total) if total > MAX_BATCH_SIZE else total
+
+    for i in range(0, total, batch_size):
+        batch = subjects[i:i + batch_size]
+        expt_segments = _segments_from_maps(gm_map, wm_map, csf_map, batch)
+
+        if use_precalc_stats:
+            atrophy, atrophy_thresholded = compute_z_with_precalc_stats(expt_segments, stats)
+            composite = compute_composite_with_precalc_stats(atrophy, stats)
+        else:
+            atrophy, atrophy_thresholded, _ = process_atrophy(expt_segments, ctrl_segments)
+            composite, _, _ = generate_norm_map(pt_dict=atrophy, ctrl_dict=z_ctrl)
+        atrophy["composite"] = composite
+        atrophy_thresholded["composite"] = composite.where(composite > 0, 0)
+
+        save_df_to_nifti_bids(
+            atrophy,
+            root=args.experiments_root,
+            mask_path=args.mask_path,
+            analysis="unthresholded_tissue_segment_z_scores",
+            ses=args.session,
+        )
+        save_df_to_nifti_bids(
+            atrophy_thresholded,
+            root=args.experiments_root,
+            mask_path=args.mask_path,
+            analysis="thresholded_tissue_segment_z_scores",
+            ses=args.session,
+        )
 
 
 def build_parser() -> argparse.ArgumentParser:

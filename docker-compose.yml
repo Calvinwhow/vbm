@@ -10,8 +10,9 @@ services:
     #   dockerfile: containers/pipeline.Dockerfile
     environment:
       - THREADS=-1
+      - SESSION=ses-pre
     volumes:
-      - /Volumes/HowExp/datasets/01a_ADNI_Alzheimer_Atrophy/neuroimaging/all_patients:/root/data       #<--- use this to mount the BIDS directory containing your T1 scans
+      - /Volumes/HowExp/datasets/06a_Jung_Alzheimer_TMS/BIDS:/root/data       #<--- use this to mount the BIDS directory containing your T1 scans
       # - ${PWD}/assets/crtl_dist_young:/root/assets/ctrl_dist
       - ${PWD}/scripts:/root/scripts
     command: ["bash", "/root/scripts/run_pipeline.sh" ]

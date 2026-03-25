@@ -42,6 +42,8 @@ def main() -> int:
         return 0
 
     for src in targets:
+        if src.name.startswith("._"):
+            continue
         stem, ext = _split_nii(src)
         if stem.endswith(suffix):
             print(f"Skipping already-smoothed: {src}")
