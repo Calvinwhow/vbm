@@ -12,7 +12,7 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 
-from calvin_utils.nifti_utils.damage_score_utils import DamageScorer
+from calvin_utils.neuroimaging_utils.nifti_utils.damage_score_utils import DamageScorer
 
 DEFAULT_BASE = Path("/root/data")
 DEFAULT_MASK = Path("/root/assets/MNI152_T1_2mm_brain_mask.nii")

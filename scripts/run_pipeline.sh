@@ -5,7 +5,7 @@ echo "=== Starting neuroimaging pipeline ==="
 
 THREADS=${THREADS:-1}
 SESSION=${SESSION:-ses-01}
-T1_DIR=${T1_DIR:-ANAT}
+T1_DIR=${T1_DIR:-anat}
 T1_FILE=${T1_FILE:-T1}
 ORGANIZE_SEGMENTATION=${ORGANIZE_SEGMENTATION:-true}
 RUN_STEP_2_2=${RUN_STEP_2_2:-true}

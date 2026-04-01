@@ -46,7 +46,7 @@ import numpy as np
 import pandas as pd
 
 import nibabel as nib
-from calvin_utils.nifti_utils.matrix_utilities import import_nifti_to_numpy_array
+from calvin_utils.neuroimaging_utils.nifti_utils.matrix_utilities import import_nifti_to_numpy_array
 from calvin_utils.vbm_utils.composite_atrophy_mapper import generate_norm_map, prepocess_dict, generate_tensor, generate_norm
 from calvin_utils.vbm_utils.processing import get_tiv, process_atrophy, process_tissue
 

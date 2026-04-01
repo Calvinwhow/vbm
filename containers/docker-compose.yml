@@ -25,7 +25,10 @@ services:
     image: calvinwhow/vbm-neuroimaging-pipeline:latest
     platform: linux/amd64
     environment:
-      - THREADS=-1            
+      - THREADS=-1     
+      - SESSION=ses-01
+      - T1_DIR=anat
+      - T1_FILE=T1
     volumes:
       - /Users/cu135/hires_backdrops/low_hpc_atrophy:/root/data       #<--- Edit this. Path left of the colon mounts the BIDS directory containing your T1 scans. Do not change path after :/root/data
     command: [ "bash", "/root/scripts/run_pipeline.sh" ] 
