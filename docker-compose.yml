@@ -5,15 +5,15 @@ services:
   neuroimaging-pipeline:
     image: calvinwhow/vbm-neuroimaging-pipeline:latest
     platform: linux/amd64
-    build:
-      context: .
-      dockerfile: containers/pipeline.Dockerfile
+    #build:
+    #  context: .
+    #  dockerfile: containers/pipeline.Dockerfile
     environment:
       - THREADS=-1
-    #   - SESSION=ses-pre
-    #   - T1_DIR=ANAT
+      - SESSION=ses-01
+      - T1_DIR=ANAT
     volumes:
-      - /Users/cu135/hires_backdrops/atrophy:/root/data       #<--- use this to mount the BIDS directory containing your T1 scans
+      - /Volumes/LaCie/datasets/Schmahmann/nifti_conversions_redo_rename:/root/data       #<--- use this to mount the BIDS directory containing your T1 scans
       # - ${PWD}/assets/crtl_dist_young:/root/assets/ctrl_dist
-      # - ${PWD}/scripts:/root/scripts
+      - ${PWD}/scripts:/root/scripts
     command: ["bash", "/root/scripts/run_pipeline.sh" ]

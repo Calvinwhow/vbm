@@ -3,9 +3,7 @@
 DATA_DIR=${DATA_DIR:-/root/data}
 SESSION=${SESSION:-ses-01}
 THREADS=${THREADS:-1}
-ATROPHY_PATTERNS=${SEGMENTS:*composite*.nii}
-
-IFS=':' read -r -a ATROPHY_PATTERNS <<< "${SEGMENTS:-*composite*.nii}"
+ATROPHY_PATTERNS=("*composite*.nii*")
 
 echo "Scanning ${DATA_DIR} for ${SESSION} sessions..."
 
