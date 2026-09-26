@@ -29,6 +29,8 @@ services:
       - SESSION=ses-01
       - T1_DIR=anat
       - T1_FILE=T1
+      - CTRL_DIST=ctrl_dist
+      - ATROPHY_ONLY=false
     volumes:
-      - /Users/cu135/hires_backdrops/low_hpc_atrophy:/root/data       #<--- Edit this. Path left of the colon mounts the BIDS directory containing your T1 scans. Do not change path after :/root/data
+      - /Users/cu135/hires_backdrops/ad_fx_for_savir:/root/data       #<--- Edit this. Path left of the colon mounts the BIDS directory containing your T1 scans. Do not change path after :/root/data
     command: [ "bash", "/root/scripts/run_pipeline.sh" ] 

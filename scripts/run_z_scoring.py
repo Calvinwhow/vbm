@@ -139,10 +139,10 @@ def run_pipeline(args: argparse.Namespace) -> None:
 
         if use_precalc_stats:
             atrophy, atrophy_thresholded = compute_z_with_precalc_stats(expt_segments, stats)
-            composite = compute_composite_with_precalc_stats(atrophy, stats)
+            composite = compute_composite_with_precalc_stats(atrophy, stats, args.atrophy_only)
         else:
             atrophy, atrophy_thresholded, _ = process_atrophy(expt_segments, ctrl_segments)
-            composite, _, _ = generate_norm_map(pt_dict=atrophy, ctrl_dict=z_ctrl)
+            composite, _, _ = compute_composite_with_control_scans(pt_dict=atrophy, ctrl_dict=z_ctrl, atrophy_only=args.atrophy_only)
         atrophy["composite"] = composite
         atrophy_thresholded["composite"] = composite.where(composite > 0, 0)
 
@@ -150,14 +150,14 @@ def run_pipeline(args: argparse.Namespace) -> None:
             atrophy,
             root=args.experiments_root,
             mask_path=args.mask_path,
-            analysis="unthresholded_tissue_segment_z_scores",
+            analysis=f"unthresholded_tissue_segment_z_scores",
             ses=args.session,
         )
         save_df_to_nifti_bids(
             atrophy_thresholded,
             root=args.experiments_root,
             mask_path=args.mask_path,
-            analysis="thresholded_tissue_segment_z_scores",
+            analysis=f"thresholded_tissue_segment_z_scores",
             ses=args.session,
         )
 
@@ -216,6 +216,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Session label used when writing BIDS output (e.g. ses-01).")
     parser.add_argument("--mask-path", type=Path, default=DEFAULT_MASK,
         help=f"Reference mask for saving NIfTI outputs (default: {DEFAULT_MASK}).")
+    
+    # Whether to consider atrophy only (True), or also to consider hypertrophy (False)
+    parser.add_argument("--ao", "--atrophy-only", required=True,
+                   help="Whether to only H-score atrophic regions")
     return parser
 
 def _resolve_stat_path(base: Path | None, override: Path | None, name: str) -> Path:
@@ -356,16 +360,33 @@ def compute_z_with_precalc_stats(expt_segments: Dict[str, "pd.DataFrame"], stats
     return zscore_dict, zscore_mask_dict
 
 
-def compute_composite_with_precalc_stats(zscore_dict: Dict[str, "pd.DataFrame"], stats: dict) -> "pd.DataFrame":
+def compute_composite_with_precalc_stats(zscore_dict: Dict[str, "pd.DataFrame"], stats: dict, atrophy_only:bool) -> "pd.DataFrame":
     """Compute composite Z (H-score) using precomputed control norm mean/std."""
     comp_mean, comp_std = stats["composite"]
     pt_dict_processed = prepocess_dict(zscore_dict)                    # Drops WM and sign-flips CSF. Thus, <0 is atrophy.
     pt_tensor = generate_tensor(pt_dict_processed)                     # Stacks
-    pt_norm = generate_norm(pt_tensor, atrophy_only=False)              # Will only consider negative values (atrophy) 
+    pt_norm = generate_norm(pt_tensor, atrophy_only=atrophy_only)      # Will only consider negative values (atrophy) 
     z = (pt_norm - comp_mean[:, np.newaxis]) / comp_std[:, np.newaxis]
     first_key = next(iter(zscore_dict))
     return pd.DataFrame(z, columns=zscore_dict[first_key].columns, index=zscore_dict[first_key].index)
 
+def compute_composite_with_control_scans(pt_dict, ctrl_dict, atrophy_only) -> pd.DataFrame:
+    """Generates a composite atrophy map with L2 norm of Z scores"""
+    pt_dict_processed = prepocess_dict(pt_dict)
+    ctrl_dict_processed = prepocess_dict(ctrl_dict)
+            
+    ctrl_tensor = generate_tensor(ctrl_dict_processed)
+    pt_tensor = generate_tensor(pt_dict_processed)
+    ctrl_norm = generate_norm(ctrl_tensor, atrophy_only)
+    pt_norm = generate_norm(pt_tensor, atrophy_only)
+    
+    mean = ctrl_norm.mean(axis=1)
+    std  = ctrl_norm.std(axis=1)
+    z = (pt_norm - mean[:, np.newaxis]) / std[:, np.newaxis]
+    
+    first_key = next(iter(pt_dict))
+    z = pd.DataFrame(z, columns=pt_dict[first_key].columns, index=pt_dict[first_key].index)
+    return z, mean, std
 
 def main() -> None:
     parser = build_parser()

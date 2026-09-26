@@ -23,13 +23,13 @@ def parse_args() -> argparse.Namespace:
 
 def load_stats(tag: str) -> float:
     """Load the mean value for the specified tag."""
-    if tag == 'smwp1':
+    if tag == 'smwp3':
         mean = os.path.join(EASYREG_DIR, 'assets', 'cerebrospinal_fluid_mean.nii')
         std = os.path.join(EASYREG_DIR, 'assets', 'cerebrospinal_fluid_std.nii')
-    elif tag == 'smwp2':
+    elif tag == 'smwp1':
         mean = os.path.join(EASYREG_DIR, 'assets', 'grey_matter_mean.nii')
         std = os.path.join(EASYREG_DIR, 'assets', 'grey_matter_std.nii')
-    elif tag == 'smwp3':
+    elif tag == 'smwp2':
         mean = os.path.join(EASYREG_DIR, 'assets', 'white_matter_mean.nii')
         std = os.path.join(EASYREG_DIR, 'assets', 'white_matter_std.nii')
     else:

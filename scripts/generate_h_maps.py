@@ -18,6 +18,8 @@ def parse_args() -> argparse.Namespace:
                    help="Input segmentation NIfTI (e.g. *_swmp1_ref.nii.gz)")
     p.add_argument("--o", "--out", required=True,
                    help="Filename to save as (e.g. swmp1-zscore.nii.gz")
+    p.add_argument("--ao", "--atrophy-only", required=True,
+                   help="Whether to only H-score atrophic regions")
     return p.parse_args()
 
 def load_stats() -> float:
@@ -33,8 +35,10 @@ def load_images(path: str) -> np.ndarray:
     tensor = np.stack(imgs, axis=0)  # shape: (N, X, Y, Z)
     return tensor
 
-def norm_images(img_arr) -> np.ndarray:
+def norm_images(img_arr, atrophy_only=False) -> np.ndarray:
     '''Get L2 norm of the images along the first axis (segments axis).'''
+    if atrophy_only:
+         arr = np.where(arr < 0, arr, 0)    # Atrophy is negative values only.
     return np.linalg.norm(img_arr, axis=0, keepdims=False)
 
 def z_score(img, mean, std, e=1e-6) -> np.ndarray:
@@ -49,7 +53,7 @@ def main() -> None:
     """Main function to compute and save the z-scored image using provided arguments."""
     args = parse_args()
     arr = load_images(args.i)
-    norm = norm_images(arr)
+    norm = norm_images(arr, args.atrophy_only)
     mean, std = load_stats()
     z_arr = z_score(norm, mean.get_fdata(), std.get_fdata())
     z_img = nib.Nifti1Image(z_arr, affine=mean.affine, header=mean.header)

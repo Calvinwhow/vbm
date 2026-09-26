@@ -10,12 +10,15 @@ T1_FILE=${T1_FILE:-T1}
 ORGANIZE_SEGMENTATION=${ORGANIZE_SEGMENTATION:-true}
 RUN_STEP_2_2=${RUN_STEP_2_2:-true}
 CTRL_DIST=${CTRL_DIST:-ctrl_dist}
+ATROPHY_ONLY=${ATROPHY_ONLY:-false}
 
 export THREADS
 export SCRIPT_DIR
 export T1_DIR
 export SESSION
 export T1_FILE
+export CTRL_DIST
+export ATROPHY_ONLY
 
 echo "DATA_DIR=$DATA_DIR"
 echo "SCRIPT_DIR=$SCRIPT_DIR"
@@ -24,6 +27,7 @@ echo "T1_DIR=$T1_DIR"
 echo "T1_FILE=$T1_FILE"
 echo "THREADS=$THREADS"
 echo "CTRL_DIST=$CTRL_DIST"
+echo "ATROPHY_ONLY=$ATROPHY_ONLY"
 
 echo "=== Validating input T1 images ==="
 T1_FILES=$(find "${DATA_DIR}" -type f -path "*/${SESSION}/${T1_DIR}/*${T1_FILE}*.nii*" ! -name "._*" | sort || true)
@@ -36,12 +40,23 @@ echo "${T1_FILES}"
 echo "=== Step 1: CAT12 segmentation ==="
 while IFS= read -r T1_FILE; do
   bash "${SCRIPT_DIR}/run_segmentation_single.sh" "$T1_FILE"
+
+  cat > "$(dirname "$T1_FILE")/atrophy_pipeline_parameters.json" <<EOF
+{
+  "control_distribution": "${CTRL_DIST}",
+  "atrophy_only": ${ATROPHY_ONLY},
+  "session": "${SESSION}",
+  "threads": ${THREADS}
+}
+EOF
+
 done <<< "$T1_FILES"
 
 echo "=== Step 1.1: Resampling CAT12 Segments ==="
 python "${SCRIPT_DIR}/run_resample_bids.py" \
     --base-dir               "${DATA_DIR}" \
     --pattern                 "*mri/mwp*"
+
 
 echo "=== Step 2.1: Atrophy Derivation ==="
 python "${SCRIPT_DIR}/run_z_scoring.py" \
@@ -51,7 +66,9 @@ python "${SCRIPT_DIR}/run_z_scoring.py" \
     --experiments-csf-pattern "*/*/mri/mwp3*resampled*" \
     --control-stats-dir       "/root/assets/${CTRL_DIST}" \
     --mask-path               "/root/assets/MNI152_T1_2mm_brain_mask.nii" \
-    --session                 "${SESSION}"
+    --session                 "${SESSION}" \
+    --atrophy-only            "${ATROPHY_ONLY}"
+
 
 echo "=== Step 2.3: Apply Smoothing ==="
 python "${SCRIPT_DIR}/apply_smoothing.py" \
