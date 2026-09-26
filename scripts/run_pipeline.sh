@@ -9,6 +9,7 @@ T1_DIR=${T1_DIR:-anat}
 T1_FILE=${T1_FILE:-T1}
 ORGANIZE_SEGMENTATION=${ORGANIZE_SEGMENTATION:-true}
 RUN_STEP_2_2=${RUN_STEP_2_2:-true}
+CTRL_DIST=${CTRL_DIST:-ctrl_dist}
 
 export THREADS
 export SCRIPT_DIR
@@ -22,6 +23,7 @@ echo "SESSION=$SESSION"
 echo "T1_DIR=$T1_DIR"
 echo "T1_FILE=$T1_FILE"
 echo "THREADS=$THREADS"
+echo "CTRL_DIST=$CTRL_DIST"
 
 echo "=== Validating input T1 images ==="
 T1_FILES=$(find "${DATA_DIR}" -type f -path "*/${SESSION}/${T1_DIR}/*${T1_FILE}*.nii*" ! -name "._*" | sort || true)
@@ -47,7 +49,7 @@ python "${SCRIPT_DIR}/run_z_scoring.py" \
     --experiments-gm-pattern  "*/*/mri/mwp1*resampled*" \
     --experiments-wm-pattern  "*/*/mri/mwp2*resampled*" \
     --experiments-csf-pattern "*/*/mri/mwp3*resampled*" \
-    --control-stats-dir       "/root/assets/ctrl_dist" \
+    --control-stats-dir       "/root/assets/${CTRL_DIST}" \
     --mask-path               "/root/assets/MNI152_T1_2mm_brain_mask.nii" \
     --session                 "${SESSION}"
 
