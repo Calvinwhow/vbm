@@ -41,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--experiments-gm-pattern", default="*/*/anat/mri/mwp1*", help="Glob under --experiments-root for patient grey matter files.")
     parser.add_argument("--experiments-wm-pattern", default="*/*/anat/mri/mwp2*", help="Glob under --experiments-root for patient white matter files.")
     parser.add_argument("--experiments-csf-pattern", default="*/*/anat/mri/mwp3*", help="Glob under --experiments-root for patient CSF files.")
-    parser.add_argument("--control-stats-dir", type=Path, default=None, help="Folder of precomputed control stats: <tissue>_mean, <tissue>_std, norm_mean, norm_std (.nii or .nii.gz).")
+    parser.add_argument("--control-stats-dir", type=Path, default=None, help="Folder of precomputed control stats: <tissue>_mean, <tissue>_std, norm_mean, norm_std (.nii or .nii.gz). With --atrophy-only true, <folder>_atrophy_only is used unless the name already contains _atrophy_only.")
     parser.add_argument("--gm-mean", type=Path, default=None, help="Override file for grey_matter_mean.")
     parser.add_argument("--gm-std", type=Path, default=None, help="Override file for grey_matter_std.")
     parser.add_argument("--wm-mean", type=Path, default=None, help="Override file for white_matter_mean.")
@@ -81,11 +81,18 @@ def preprocessed_controls(args: argparse.Namespace) -> dict:
     subjects = require_subjects(subjects_with_all_tissues(control_files), "control")
     return preprocess_segments(load_segments(control_files, subjects))
 
+def matching_control_stats_dir(stats_dir: Optional[Path], atrophy_only: bool) -> Optional[Path]:
+    """With atrophy_only, the '<name>_atrophy_only' sibling of the given control stats folder, unless its name already contains '_atrophy_only'."""
+    if stats_dir and atrophy_only and "_atrophy_only" not in stats_dir.name:
+        print(f"atrophy_only: using {stats_dir.name}_atrophy_only instead of {stats_dir.name}")
+        return stats_dir.with_name(f"{stats_dir.name}_atrophy_only")
+    return stats_dir
+
 def get_control_stats(args: argparse.Namespace) -> dict:
     """Precomputed stats if any stat folder or file is given; otherwise stats computed from --controls-root."""
     overrides = stat_overrides(args)
     if args.control_stats_dir or any(overrides.values()):
-        return load_control_stats(args.control_stats_dir, overrides)
+        return load_control_stats(matching_control_stats_dir(args.control_stats_dir, args.atrophy_only), overrides)
     if args.controls_root:
         return control_stats_from_scans(preprocessed_controls(args), args.atrophy_only)
     raise SystemExit("Provide either a control directory or pre-calculated control stats.")
