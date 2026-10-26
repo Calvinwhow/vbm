@@ -1,433 +1,128 @@
 #!/usr/bin/env python3
 """
-Explanation for Z-scoring Pipeline for VBM Analysis
-This script implements a voxel-based morphometry (VBM) z-scoring pipeline that calculates
-tissue atrophy scores by comparing experimental subjects against a control distribution.
-Quick Start:
-    python run_z_scoring.py \\
-        --experiments-root /path/to/experimental/segments \\
-        --controls-root /path/to/control/segments
-Key Parameters:
-Input Data:
-    --experiments-root (required): Path to experimental subject tissue segments (MWP files)
-    --controls-root (optional): Path to control subject tissue segments. Required unless
-                                pre-calculated statistics are provided.
-Control Statistics:
-    --control-stats-dir: Directory containing pre-calculated normative distributions
-                        (grey_matter_mean.nii, grey_matter_std.nii, etc.)
-    --gm-mean, --gm-std, --wm-mean, --wm-std, --csf-mean, --csf-std,
-    --composite-mean, --composite-std: Individual override paths for specific statistics
-File Matching Patterns:
-    --controls-gm-pattern, --controls-wm-pattern, --controls-csf-pattern: Glob patterns
-                                                                           for control files
-    --experiments-gm-pattern, --experiments-wm-pattern, --experiments-csf-pattern: Glob
-                                                                                    patterns for experimental files
-Subject ID Processing:
-    --pre-subject-str: String prefix to remove from column names (default: "")
-    --post-subject-str: String suffix to remove from column names (default: "_mwp")
-Output Options:
-    --session: Session label for BIDS output (default: "ses-01")
-    --mask-path: Reference mask for NIfTI output (default: root/assets/MNI152_T1_2mm_brain_mask.nii)
-    --unthresholded-analysis: Output folder name for z-scores (default: unthresholded_tissue_segment_z_scores)
-    --thresholded-analysis: Output folder name for thresholded z-scores (default: thresholded_tissue_segment_z_scores)
-    --dry-run: Preview output paths without writing files
-Outputs:
-    Z-scored NIfTI files for grey matter, white matter, CSF, and composite atrophy measures
-    saved in BIDS format under the specified analysis directories.
+Atrophy z-scores per voxel for grey matter, white matter, CSF and a composite, for every subject, against a control distribution.
+
+Convention: positive z = atrophy in every tissue (less GM / WM, more CSF than controls).
+
+main() runs: 1) argparse  2) IO: find and load  3) preprocess  4) process  5) postprocess  6) IO: save
+
+Control distribution, one of:
+    --control-stats-dir   precomputed <tissue>_mean / <tissue>_std and norm_mean / norm_std NIfTIs (.nii or .nii.gz); single files can be overridden (--gm-mean, ...)
+    --controls-root       control segment files; the same stats are computed from them
+
+Outputs, written beside each subject's inputs:
+    <root>/<sub>/<ses>/unthresholded_tissue_segment_z_scores/sub-<id>_<ses>_<map>.nii.gz
+    <root>/<sub>/<ses>/thresholded_tissue_segment_z_scores/sub-<id>_<ses>_<map>.nii.gz
+    <map> is grey_matter, white_matter, cerebrospinal_fluid or composite.
+
+Called by scripts/run_pipeline.sh (docker-compose) and notebooks/02_atrophy_quick.ipynb.
 """
-from __future__ import annotations
-import os
 import argparse
 from pathlib import Path
-from typing import Dict, Iterable, List
-from glob import glob
+from typing import Dict, List, Optional
 
-import numpy as np
-import pandas as pd
-from nilearn import image
-import nibabel as nib
-from calvin_utils.vbm_utils.composite_atrophy_mapper import generate_norm_map, prepocess_dict, generate_tensor, generate_norm
-from calvin_utils.vbm_utils.processing import get_tiv, process_atrophy, process_tissue
+from atrophy_io import find_tissue_files, subjects_with_all_tissues, load_segments, load_control_stats, save_maps
+from atrophy_preprocess import preprocess_segments
+from atrophy_process import atrophy_zscores, control_stats_from_scans
+from atrophy_postprocess import threshold_maps
 
-DEFAULT_MASK = Path("/root/assets/MNI152_T1_2mm_brain_mask.nii")
-MAX_BATCH_SIZE = 100
 
-### Argparse ###
+### 1) argparse ###
+
+def parse_bool(value: str) -> bool:
+    """'true' / 'false' in any case; anything else is an error."""
+    if value.lower() not in ("true", "false"):
+        raise argparse.ArgumentTypeError(f"Expected true or false, got: {value}")
+    return value.lower() == "true"
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run the Z-scoring pipeline from notebook 02A.")
-    # Args for Globbing out Individual Tissue Segments
-    parser.add_argument("--controls-root", type=Path, required=False, 
-                        help="Base path (glob allowed) to control tissue segments (e.g. /.../BIDS/sub-*/*/mri).")
-    parser.add_argument("--experiments-root", type=Path, required=True,
-        help="Base path (glob allowed) to experimental tissue segments.")
-    
-    # Args for Precalculated Normative Distributions. Overrides use of control segments
-    parser.add_argument("--control-stats-dir", type=Path, default=None,
-        help="Directory containing pre-calculated control means/stds (expects <tissue>_mean.nii, <tissue>_std.nii, norm_mean.nii, norm_std.nii).")
-    # Additional optional inputs to directly overried the generic precalculated files. Defaults to None. 
-    parser.add_argument("--gm-mean", type=Path, default=None, 
-                        help="Optional override path for grey matter mean NIfTI.")
-    parser.add_argument("--gm-std", type=Path, default=None, 
-                        help="Optional override path for grey matter std NIfTI.")
-    parser.add_argument("--wm-mean", type=Path, default=None, 
-                        help="Optional override path for white matter mean NIfTI.")
-    parser.add_argument("--wm-std", type=Path, default=None, 
-                        help="Optional override path for white matter std NIfTI.")
-    parser.add_argument("--csf-mean", type=Path, default=None, 
-                        help="Optional override path for CSF mean NIfTI.")
-    parser.add_argument("--csf-std", type=Path, default=None, 
-                        help="Optional override path for CSF std NIfTI.")
-    parser.add_argument("--composite-mean", type=Path, default=None, 
-                        help="Optional override path for composite norm mean NIfTI.")
-    parser.add_argument("--composite-std", type=Path, default=None, 
-                        help="Optional override path for composite norm std NIfTI.")
-
-    # Args for Globbing out MWP files
-    parser.add_argument("--controls-gm-pattern", default="*/*/anat/mri/mwp1*", 
-                        help="Glob for control grey matter files.")
-    parser.add_argument("--controls-wm-pattern", default="*/*/anat/mri/mwp2*", 
-                        help="Glob for control white matter files.")
-    parser.add_argument("--controls-csf-pattern", default="*/*/anat/mri/mwp3*", 
-                        help="Glob for control CSF files.")
-    parser.add_argument("--experiments-gm-pattern", default="*/*/anat/mri/mwp1*", 
-                        help="Glob for experimental grey matter files.")
-    parser.add_argument("--experiments-wm-pattern", default="*/*/anat/mri/mwp2*", 
-                        help="Glob for experimental white matter files.")
-    parser.add_argument("--experiments-csf-pattern", default="*/*/anat/mri/mwp3*", 
-                        help="Glob for experimental CSF files.")
-
-    # Args for extracting subject ID 
-    parser.add_argument("--pre-subject-str", type=str, default="",
-        help="String to drop before the subject ID in column names (passed to splice_colnames).")
-    parser.add_argument("--post-subject-str", type=str, default="_mwp",
-        help="String to drop after the subject ID in column names (passed to splice_colnames).")
-   
-    # Other Args
-    parser.add_argument("--session", type=str, default="ses-01",
-        help="Session label used when writing BIDS output (e.g. ses-01).")
-    parser.add_argument("--mask-path", type=Path, default=DEFAULT_MASK,
-        help=f"Reference mask for saving NIfTI outputs (default: {DEFAULT_MASK}).")
-    
-    # Whether to consider atrophy only (True), or also to consider hypertrophy (False)
-    parser.add_argument("--atrophy-only", required=True,
-                   help="Whether to only H-score atrophic regions")
+    parser = argparse.ArgumentParser(description="Atrophy z-scores (GM, WM, CSF, composite) against a control distribution.")
+    parser.add_argument("--experiments-root", type=Path, required=True, help="Root folder shared by all patients. Patterns are relative to it, and outputs are written under it.")
+    parser.add_argument("--experiments-gm-pattern", default="*/*/anat/mri/mwp1*", help="Glob under --experiments-root for patient grey matter files.")
+    parser.add_argument("--experiments-wm-pattern", default="*/*/anat/mri/mwp2*", help="Glob under --experiments-root for patient white matter files.")
+    parser.add_argument("--experiments-csf-pattern", default="*/*/anat/mri/mwp3*", help="Glob under --experiments-root for patient CSF files.")
+    parser.add_argument("--control-stats-dir", type=Path, default=None, help="Folder of precomputed control stats: <tissue>_mean, <tissue>_std, norm_mean, norm_std (.nii or .nii.gz).")
+    parser.add_argument("--gm-mean", type=Path, default=None, help="Override file for grey_matter_mean.")
+    parser.add_argument("--gm-std", type=Path, default=None, help="Override file for grey_matter_std.")
+    parser.add_argument("--wm-mean", type=Path, default=None, help="Override file for white_matter_mean.")
+    parser.add_argument("--wm-std", type=Path, default=None, help="Override file for white_matter_std.")
+    parser.add_argument("--csf-mean", type=Path, default=None, help="Override file for cerebrospinal_fluid_mean.")
+    parser.add_argument("--csf-std", type=Path, default=None, help="Override file for cerebrospinal_fluid_std.")
+    parser.add_argument("--composite-mean", type=Path, default=None, help="Override file for norm_mean.")
+    parser.add_argument("--composite-std", type=Path, default=None, help="Override file for norm_std.")
+    parser.add_argument("--controls-root", type=Path, default=None, help="Root folder of control segments. Used only when no precomputed control stats are given.")
+    parser.add_argument("--controls-gm-pattern", default="*/*/anat/mri/mwp1*", help="Glob under --controls-root for control grey matter files.")
+    parser.add_argument("--controls-wm-pattern", default="*/*/anat/mri/mwp2*", help="Glob under --controls-root for control white matter files.")
+    parser.add_argument("--controls-csf-pattern", default="*/*/anat/mri/mwp3*", help="Glob under --controls-root for control CSF files.")
+    parser.add_argument("--mask-path", type=Path, default=Path("/root/assets/MNI152_T1_2mm_brain_mask.nii"), help="Reference NIfTI whose grid and affine the outputs use.")
+    parser.add_argument("--session", type=str, default="ses-01", help="Not used: output session folders come from each input's path.")
+    parser.add_argument("--atrophy-only", type=parse_bool, required=True, help="true: the composite counts only atrophic z-scores. false: it counts deviations in both directions.")
     return parser
 
-### I/O Code ###
 
-def _resolve_stat_path(base: Path | None, override: Path | None, name: str) -> Path:
-    """
-    Resolve a control statistic path using an optional override or the provided base directory.
-    
-    :param base: Base to control statistics directory
-    :param override: Optional explicit path override
-    :param name: Filename for the corresponding statistic in the base directory
-    :return: Path to the file to be imported
-    """
-    if override:
-        return override
-    if not base:
-        raise SystemExit(f"Missing path for {name}. Provide --control-stats-dir or explicit --{name.replace('_', '-')}.")
-    nii_path = base / f"{name}.nii"
-    if nii_path.exists():
-        return nii_path
-    nii_gz_path = base / f"{name}.nii.gz"
-    if nii_gz_path.exists():
-        return nii_gz_path
-    raise SystemExit(f"Missing control stat file: {nii_path} or {nii_gz_path}")
+### 2) IO: find and load ###
 
-def save_df_to_nifti_bids(dataframes_dict, root, mask_path, analysis='tissue_segment_z_scores', ses='ses-01'):
-    """
-    Saves NIFTI images to a BIDS-compliant directory structure.
+def require_mask(mask_path: Path) -> None:
+    if not mask_path.exists():
+        raise SystemExit(f"Mask not found: {mask_path}")
 
-    Parameters:
-        dataframes_dict (dict[str, pd.DataFrame]): Dictionary mapping tissue types to DataFrames containing subject data.
-        root (path): Base directory for BIDS structure.
-        mask_path (str): Path to the mask file
-        analysis (str, optional): Analysis folder name. Defaults to 'tissue_segment_z_scores'.
-        ses (str, optional): Session identifier (e.g., 'ses-01'). Defaults to 'ses-01'.
-    """
-    def _extract_subid(root: Path, subj_path: str):
-        """Use the first folder after root as the subject ID (strip a leading sub- if present)."""
-        root = Path(root)
-        subj_path = Path(subj_path)
-        # Normalize to absolute under root; fail loudly if not possible.
-        if not subj_path.is_absolute():
-            subj_path = root / subj_path
-        try:
-            relative = subj_path.relative_to(root)
-        except ValueError as exc:
-            raise ValueError(f"{subj_path} is not under root {root}; ensure columns include paths relative to {root}") from exc
-        if len(relative.parts) < 2:
-            raise ValueError(f"Expected subject/session folders under {root}, got: {relative}")
-
-        first = str(relative.parts[0])
-        # Strip common subject prefixes; fall back to the raw folder name.
-        for prefix in ("subject-", "subid-", "sub-"):
-            if first.startswith(prefix):
-                subid = first[len(prefix):]
-                break
-        else:
-            subid = first
-        sesfolder = relative.parts[1]
-        return subid, relative.parts[0], sesfolder
-        
-    def _construct_bids_path(root: Path, subfolder: Path, sesfolder: Path, subid: str, analysis: str, tissue_type: str):
-        output_name = f'sub-{subid}_{sesfolder}_{tissue_type}.nii.gz'
-        return os.path.join(root, subfolder, sesfolder, analysis, output_name)
-    
-    def _make_nifti(arr):
-        mask_img = nib.load(str(mask_path))
-        mask_data = mask_img.get_fdata()
-        arr = arr.reshape(mask_data.shape)
-        return nib.Nifti1Image(arr, mask_img.affine)
-
-    def _save_nifti(img, out_path, overwrite=True):
-        if Path(out_path).exists() and not overwrite:
-            print(f"Skipping. File already exists: {out_path}")
-            return
-        elif Path(out_path).exists() and overwrite:
-            print(f"Overwriting: {out_path}")
-        else: 
-            print(f"Saving new: {out_path}")
-        Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-        nib.save(img, out_path)
-    
-    for tissue_type, dataframe in dataframes_dict.items():
-        for col in dataframe.columns:
-            subid, subfolder, sesfolder = _extract_subid(root, col)             # expects each column to be a full path to the file
-            out_path = _construct_bids_path(root, subfolder, sesfolder, subid, analysis, tissue_type)
-            nii_img = _make_nifti(dataframe[col].values)
-            _save_nifti(nii_img, out_path)
-
-def _load_flattened_nifti(path: Path) -> np.ndarray:
-    """
-    Simple import to load a nifti directly into a flattened numpy array
-    
-    :param path: Path to the nifti
-    :return: np array containing the flattened nifti
-    """
-    arr = import_nifti_to_numpy_array(str(path))
-    if arr is None:
-        raise SystemExit(f"Could not read NIfTI: {path}")
-    return np.asarray(arr).flatten()
-
-
-def load_control_stats(args: argparse.Namespace):
-    """
-    Loads in the precalculated normative files representing the control distribution.
-    
-    :param args: Args from the command line.
-    :return: A dictionary with keys for each segment, and a tuple holding (mean, stdev) files
-    """
-    stats = {}
-    stats["grey_matter"] = (
-        _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.gm_mean, "grey_matter_mean")),
-        _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.gm_std, "grey_matter_std")),
-    )
-    stats["white_matter"] = (
-        _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.wm_mean, "white_matter_mean")),
-        _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.wm_std, "white_matter_std")),
-    )
-    stats["cerebrospinal_fluid"] = (
-        _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.csf_mean, "cerebrospinal_fluid_mean")),
-        _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.csf_std, "cerebrospinal_fluid_std")),
-    )
-    stats["composite"] = (
-        _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.composite_mean, "norm_mean")),
-        _load_flattened_nifti(_resolve_stat_path(args.control_stats_dir, args.composite_std, "norm_std")),
-    )
-    return stats
-
-
-def import_nifti_to_numpy_array(filepath):
-    '''
-    Does what it says. Just provide the absolute filepath.
-    Args:
-        filepath: absolute path to the file to import
-    Returns:
-        nifti_data: nifti_data as a numpy array
-    '''
-    try:
-        # Load the NIfTI image using nilearn
-        nifti_img = image.load_img(filepath)
-
-        # Convert the NIfTI image to a NumPy array
-        nifti_data = nifti_img.get_fdata()
-
-        # Return the NIfTI image
-        return nifti_data
-    except Exception as e:
-        print("Error:", e)
-        return None
-
-def _subject_key(path: Path) -> str:
-    parts = path.parts
-    subj = next((p for p in parts if p.startswith(("sub-", "subject-", "subid-"))), None)
-    ses = next((p for p in parts if p.startswith("ses-")), None)
-    if subj and ses:
-        return f"{subj}/{ses}"
-    return subj or str(path)
-
-def _glob_map(base_dir: Path, pattern: str) -> Dict[str, Path]:
-    files = (Path(p) for p in sorted(glob(str(base_dir / pattern))))
-    return {_subject_key(p): p for p in files}
-
-def _load_df(files: Iterable[Path]) -> pd.DataFrame:
-    arrays = []
-    cols = []
-    for f in files:
-        arr = import_nifti_to_numpy_array(str(f))
-        if arr is None:
-            continue
-        cols.append(str(f))
-        arrays.append(np.asarray(arr).flatten())
-    if not arrays:
-        return pd.DataFrame()
-    data = np.stack(arrays, axis=1)
-    return pd.DataFrame(data, columns=cols)
-
-def _segments_from_maps(gm_map, wm_map, csf_map, subjects: List[str]) -> Dict[str, "pd.DataFrame"]:
-    return {
-        "grey_matter": _load_df(gm_map[s] for s in subjects),
-        "white_matter": _load_df(wm_map[s] for s in subjects),
-        "cerebrospinal_fluid": _load_df(csf_map[s] for s in subjects),
-    }
-
-### Math ###
-
-def compute_z_with_precalc_stats(expt_segments: Dict[str, "pd.DataFrame"], stats: dict):
-    """Calculate patient z-scores using precomputed control mean/std arrays."""
-    pt_tiv = get_tiv(expt_segments)
-    zscore_dict = {}
-    zscore_mask_dict = {}
-    for tissue, df in expt_segments.items():
-        mean, std = stats[tissue]
-        processed = process_tissue(df, pt_tiv, threshold=0.2)
-        z_arr = (processed.values - mean[:, np.newaxis]) / std[:, np.newaxis]
-        z_df = pd.DataFrame(z_arr, index=processed.index, columns=processed.columns)
-        if tissue == "cerebrospinal_fluid":
-            sig_mask = z_df.where(z_df > 2, 0)
-        else:
-            sig_mask = z_df.where(z_df < -2, 0)
-        zscore_dict[tissue] = z_df
-        zscore_mask_dict[tissue] = sig_mask
-    return zscore_dict, zscore_mask_dict
-
-def compute_composite_with_precalc_stats(zscore_dict: Dict[str, "pd.DataFrame"], stats: dict, atrophy_only:bool) -> "pd.DataFrame":
-    """Compute composite Z (H-score) using precomputed control norm mean/std."""
-    comp_mean, comp_std = stats["composite"]
-    pt_dict_processed = prepocess_dict(zscore_dict)                    # Drops WM and sign-flips CSF. Thus, <0 is atrophy.
-    pt_tensor = generate_tensor(pt_dict_processed)                     # Stacks
-    pt_norm = generate_norm(pt_tensor, atrophy_only=atrophy_only)      # Will only consider negative values (atrophy) 
-    z = (pt_norm - comp_mean[:, np.newaxis]) / comp_std[:, np.newaxis]
-    first_key = next(iter(zscore_dict))
-    return pd.DataFrame(z, columns=zscore_dict[first_key].columns, index=zscore_dict[first_key].index)
-
-def compute_composite_with_control_scans(pt_dict, ctrl_dict, atrophy_only) -> pd.DataFrame:
-    """Generates a composite atrophy map with L2 norm of Z scores"""
-    pt_dict_processed = prepocess_dict(pt_dict)
-    ctrl_dict_processed = prepocess_dict(ctrl_dict)
-            
-    ctrl_tensor = generate_tensor(ctrl_dict_processed)
-    pt_tensor = generate_tensor(pt_dict_processed)
-    ctrl_norm = generate_norm(ctrl_tensor, atrophy_only)
-    pt_norm = generate_norm(pt_tensor, atrophy_only)
-    
-    mean = ctrl_norm.mean(axis=1)
-    std  = ctrl_norm.std(axis=1)
-    z = (pt_norm - mean[:, np.newaxis]) / std[:, np.newaxis]
-    
-    first_key = next(iter(pt_dict))
-    z = pd.DataFrame(z, columns=pt_dict[first_key].columns, index=pt_dict[first_key].index)
-    return z, mean, std
-
-### Public API ###
-
-def run_pipeline(args: argparse.Namespace) -> None:
-    """
-    Orchestrator
-    
-    :param args: Args passed from the command line. 
-    """
-    # Prep
-    use_precalc_stats = any(
-        [
-            args.control_stats_dir,
-            args.gm_mean,
-            args.gm_std,
-            args.wm_mean,
-            args.wm_std,
-            args.csf_mean,
-            args.csf_std,
-            args.composite_mean,
-            args.composite_std,
-        ]
-    )
-    if not use_precalc_stats and not args.controls_root:
-        raise SystemExit("Provide either a control directory or pre-calculated control stats.")
-
-    # Imports
-    ctrl_segments = None
-    z_ctrl = None
-    if not use_precalc_stats:
-        ctrl_gm = _glob_map(args.controls_root, args.controls_gm_pattern)
-        ctrl_wm = _glob_map(args.controls_root, args.controls_wm_pattern)
-        ctrl_csf = _glob_map(args.controls_root, args.controls_csf_pattern)
-        ctrl_subjects = sorted(set(ctrl_gm) & set(ctrl_wm) & set(ctrl_csf))
-        if not ctrl_subjects:
-            raise SystemExit("No overlapping control subjects found across GM/WM/CSF patterns.")
-        ctrl_segments = _segments_from_maps(ctrl_gm, ctrl_wm, ctrl_csf, ctrl_subjects)
-        z_ctrl, _, _ = process_atrophy(data_dict=ctrl_segments, ctrl_dict=ctrl_segments)
-
-    gm_map = _glob_map(args.experiments_root, args.experiments_gm_pattern)
-    wm_map = _glob_map(args.experiments_root, args.experiments_wm_pattern)
-    csf_map = _glob_map(args.experiments_root, args.experiments_csf_pattern)
-    subjects = sorted(set(gm_map) & set(wm_map) & set(csf_map))
+def require_subjects(subjects: List[str], label: str) -> List[str]:
     if not subjects:
-        raise SystemExit("No overlapping experimental subjects found across GM/WM/CSF patterns.")
+        raise SystemExit(f"No overlapping {label} subjects found across GM/WM/CSF patterns.")
+    return subjects
 
-    stats = load_control_stats(args) if use_precalc_stats else None
-    total = len(subjects)
-    batch_size = min(MAX_BATCH_SIZE, total) if total > MAX_BATCH_SIZE else total
+def stat_overrides(args: argparse.Namespace) -> Dict[str, Optional[Path]]:
+    """Override files from the command line, keyed by the control stat they replace."""
+    return {"grey_matter_mean": args.gm_mean, "grey_matter_std": args.gm_std, "white_matter_mean": args.wm_mean, "white_matter_std": args.wm_std, "cerebrospinal_fluid_mean": args.csf_mean, "cerebrospinal_fluid_std": args.csf_std, "norm_mean": args.composite_mean, "norm_std": args.composite_std}
 
-    for i in range(0, total, batch_size):
-        batch = subjects[i:i + batch_size]
-        expt_segments = _segments_from_maps(gm_map, wm_map, csf_map, batch)
+def preprocessed_controls(args: argparse.Namespace) -> dict:
+    """Control segments found, loaded and preprocessed exactly like the patients."""
+    control_files = find_tissue_files(args.controls_root, args.controls_gm_pattern, args.controls_wm_pattern, args.controls_csf_pattern)
+    subjects = require_subjects(subjects_with_all_tissues(control_files), "control")
+    return preprocess_segments(load_segments(control_files, subjects))
 
-        if use_precalc_stats:
-            atrophy, atrophy_thresholded = compute_z_with_precalc_stats(expt_segments, stats)
-            composite = compute_composite_with_precalc_stats(atrophy, stats, args.atrophy_only)
-        else:
-            atrophy, atrophy_thresholded, _ = process_atrophy(expt_segments, ctrl_segments)
-            composite, _, _ = compute_composite_with_control_scans(pt_dict=atrophy, ctrl_dict=z_ctrl, atrophy_only=args.atrophy_only)
-        atrophy["composite"] = composite
-        atrophy_thresholded["composite"] = composite.where(composite > 0, 0)
+def get_control_stats(args: argparse.Namespace) -> dict:
+    """Precomputed stats if any stat folder or file is given; otherwise stats computed from --controls-root."""
+    overrides = stat_overrides(args)
+    if args.control_stats_dir or any(overrides.values()):
+        return load_control_stats(args.control_stats_dir, overrides)
+    if args.controls_root:
+        return control_stats_from_scans(preprocessed_controls(args), args.atrophy_only)
+    raise SystemExit("Provide either a control directory or pre-calculated control stats.")
 
-        save_df_to_nifti_bids(
-            atrophy,
-            root=args.experiments_root,
-            mask_path=args.mask_path,
-            analysis=f"unthresholded_tissue_segment_z_scores",
-            ses=args.session,
-        )
-        save_df_to_nifti_bids(
-            atrophy_thresholded,
-            root=args.experiments_root,
-            mask_path=args.mask_path,
-            analysis=f"thresholded_tissue_segment_z_scores",
-            ses=args.session,
-        )
+def batches(subjects: List[str], batch_size: int = 100) -> List[List[str]]:
+    """Consecutive chunks of at most batch_size subjects, so memory stays bounded."""
+    return [subjects[start:start + batch_size] for start in range(0, len(subjects), batch_size)]
+
+
+### Main ###
 
 def main() -> None:
-    parser = build_parser()
-    args = parser.parse_args()
+    # 1) argparse
+    args = build_parser().parse_args()
+    require_mask(args.mask_path)
 
-    if not args.mask_path.exists():
-        raise SystemExit(f"Mask not found: {args.mask_path}")
+    # 2) IO: find patients and control stats
+    patient_files = find_tissue_files(args.experiments_root, args.experiments_gm_pattern, args.experiments_wm_pattern, args.experiments_csf_pattern)
+    subjects = require_subjects(subjects_with_all_tissues(patient_files), "experimental")
+    control_stats = get_control_stats(args)
 
-    run_pipeline(args)
+    for batch in batches(subjects):
+        # 2) IO: load
+        segments = load_segments(patient_files, batch)
+
+        # 3) preprocess
+        preprocessed = preprocess_segments(segments)
+
+        # 4) process
+        zscores = atrophy_zscores(preprocessed, control_stats, args.atrophy_only)
+
+        # 5) postprocess
+        thresholded = threshold_maps(zscores)
+
+        # 6) IO: save
+        save_maps(zscores, args.experiments_root, args.mask_path, "unthresholded_tissue_segment_z_scores")
+        save_maps(thresholded, args.experiments_root, args.mask_path, "thresholded_tissue_segment_z_scores")
 
 
 if __name__ == "__main__":
