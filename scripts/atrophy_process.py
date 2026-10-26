@@ -36,6 +36,16 @@ def composite_zscore(zscores: Dict[str, pd.DataFrame], composite_stats: Tuple[np
     norms = pd.DataFrame(atrophy_norm(zscores, atrophy_only), index=zscores["grey_matter"].index, columns=zscores["grey_matter"].columns)
     return zscore(norms, *composite_stats)
 
+def norm_stats(control_zscores: Dict[str, pd.DataFrame], atrophy_only: bool) -> Tuple[np.ndarray, np.ndarray]:
+    """Per-voxel mean and population std (ddof=0) of the controls' atrophy norm."""
+    control_norm = atrophy_norm(control_zscores, atrophy_only)
+    return control_norm.mean(axis=1), control_norm.std(axis=1)
+
+def generate_norm_map(patient_zscores: Dict[str, pd.DataFrame], control_zscores: Dict[str, pd.DataFrame], atrophy_only: bool) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
+    """Patients' composite z (atrophy norm vs the controls' norm), plus the control norm mean and std. Both inputs must be atrophy-positive z-scores."""
+    mean, std = norm_stats(control_zscores, atrophy_only)
+    return composite_zscore(patient_zscores, (mean, std), atrophy_only), mean, std
+
 def atrophy_zscores(preprocessed: Dict[str, pd.DataFrame], control_stats: Dict[str, Tuple[np.ndarray, np.ndarray]], atrophy_only: bool) -> Dict[str, pd.DataFrame]:
     """Atrophy z-scores for grey_matter, white_matter, cerebrospinal_fluid and the composite."""
     zscores = tissue_atrophy_zscores(preprocessed, control_stats)
@@ -44,5 +54,4 @@ def atrophy_zscores(preprocessed: Dict[str, pd.DataFrame], control_stats: Dict[s
 def control_stats_from_scans(preprocessed_controls: Dict[str, pd.DataFrame], atrophy_only: bool) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
     """The same (mean, std) stats a --control-stats-dir holds, computed from control scans: per tissue, and for the controls' own atrophy norm."""
     tissue_stats = {tissue: voxel_mean_std(frame) for tissue, frame in preprocessed_controls.items()}
-    control_norm = atrophy_norm(tissue_atrophy_zscores(preprocessed_controls, tissue_stats), atrophy_only)
-    return {**tissue_stats, "composite": (control_norm.mean(axis=1), control_norm.std(axis=1))}
+    return {**tissue_stats, "composite": norm_stats(tissue_atrophy_zscores(preprocessed_controls, tissue_stats), atrophy_only)}
