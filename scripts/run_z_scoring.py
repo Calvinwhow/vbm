@@ -44,123 +44,15 @@ from glob import glob
 
 import numpy as np
 import pandas as pd
-
+from nilearn import image
 import nibabel as nib
-from calvin_utils.neuroimaging_utils.nifti_utils.matrix_utilities import import_nifti_to_numpy_array
 from calvin_utils.vbm_utils.composite_atrophy_mapper import generate_norm_map, prepocess_dict, generate_tensor, generate_norm
 from calvin_utils.vbm_utils.processing import get_tiv, process_atrophy, process_tissue
 
 DEFAULT_MASK = Path("/root/assets/MNI152_T1_2mm_brain_mask.nii")
 MAX_BATCH_SIZE = 100
 
-def _subject_key(path: Path) -> str:
-    parts = path.parts
-    subj = next((p for p in parts if p.startswith(("sub-", "subject-", "subid-"))), None)
-    ses = next((p for p in parts if p.startswith("ses-")), None)
-    if subj and ses:
-        return f"{subj}/{ses}"
-    return subj or str(path)
-
-def _glob_map(base_dir: Path, pattern: str) -> Dict[str, Path]:
-    files = (Path(p) for p in sorted(glob(str(base_dir / pattern))))
-    return {_subject_key(p): p for p in files}
-
-def _load_df(files: Iterable[Path]) -> pd.DataFrame:
-    arrays = []
-    cols = []
-    for f in files:
-        arr = import_nifti_to_numpy_array(str(f))
-        if arr is None:
-            continue
-        cols.append(str(f))
-        arrays.append(np.asarray(arr).flatten())
-    if not arrays:
-        return pd.DataFrame()
-    data = np.stack(arrays, axis=1)
-    return pd.DataFrame(data, columns=cols)
-
-def _segments_from_maps(gm_map, wm_map, csf_map, subjects: List[str]) -> Dict[str, "pd.DataFrame"]:
-    return {
-        "grey_matter": _load_df(gm_map[s] for s in subjects),
-        "white_matter": _load_df(wm_map[s] for s in subjects),
-        "cerebrospinal_fluid": _load_df(csf_map[s] for s in subjects),
-    }
-
-def run_pipeline(args: argparse.Namespace) -> None:
-    """
-    Orchestrator
-    
-    :param args: Args passed from the command line. 
-    """
-    # Prep
-    use_precalc_stats = any(
-        [
-            args.control_stats_dir,
-            args.gm_mean,
-            args.gm_std,
-            args.wm_mean,
-            args.wm_std,
-            args.csf_mean,
-            args.csf_std,
-            args.composite_mean,
-            args.composite_std,
-        ]
-    )
-    if not use_precalc_stats and not args.controls_root:
-        raise SystemExit("Provide either a control directory or pre-calculated control stats.")
-
-    # Imports
-    ctrl_segments = None
-    z_ctrl = None
-    if not use_precalc_stats:
-        ctrl_gm = _glob_map(args.controls_root, args.controls_gm_pattern)
-        ctrl_wm = _glob_map(args.controls_root, args.controls_wm_pattern)
-        ctrl_csf = _glob_map(args.controls_root, args.controls_csf_pattern)
-        ctrl_subjects = sorted(set(ctrl_gm) & set(ctrl_wm) & set(ctrl_csf))
-        if not ctrl_subjects:
-            raise SystemExit("No overlapping control subjects found across GM/WM/CSF patterns.")
-        ctrl_segments = _segments_from_maps(ctrl_gm, ctrl_wm, ctrl_csf, ctrl_subjects)
-        z_ctrl, _, _ = process_atrophy(data_dict=ctrl_segments, ctrl_dict=ctrl_segments)
-
-    gm_map = _glob_map(args.experiments_root, args.experiments_gm_pattern)
-    wm_map = _glob_map(args.experiments_root, args.experiments_wm_pattern)
-    csf_map = _glob_map(args.experiments_root, args.experiments_csf_pattern)
-    subjects = sorted(set(gm_map) & set(wm_map) & set(csf_map))
-    if not subjects:
-        raise SystemExit("No overlapping experimental subjects found across GM/WM/CSF patterns.")
-
-    stats = load_control_stats(args) if use_precalc_stats else None
-    total = len(subjects)
-    batch_size = min(MAX_BATCH_SIZE, total) if total > MAX_BATCH_SIZE else total
-
-    for i in range(0, total, batch_size):
-        batch = subjects[i:i + batch_size]
-        expt_segments = _segments_from_maps(gm_map, wm_map, csf_map, batch)
-
-        if use_precalc_stats:
-            atrophy, atrophy_thresholded = compute_z_with_precalc_stats(expt_segments, stats)
-            composite = compute_composite_with_precalc_stats(atrophy, stats, args.atrophy_only)
-        else:
-            atrophy, atrophy_thresholded, _ = process_atrophy(expt_segments, ctrl_segments)
-            composite, _, _ = compute_composite_with_control_scans(pt_dict=atrophy, ctrl_dict=z_ctrl, atrophy_only=args.atrophy_only)
-        atrophy["composite"] = composite
-        atrophy_thresholded["composite"] = composite.where(composite > 0, 0)
-
-        save_df_to_nifti_bids(
-            atrophy,
-            root=args.experiments_root,
-            mask_path=args.mask_path,
-            analysis=f"unthresholded_tissue_segment_z_scores",
-            ses=args.session,
-        )
-        save_df_to_nifti_bids(
-            atrophy_thresholded,
-            root=args.experiments_root,
-            mask_path=args.mask_path,
-            analysis=f"thresholded_tissue_segment_z_scores",
-            ses=args.session,
-        )
-
+### Argparse ###
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the Z-scoring pipeline from notebook 02A.")
@@ -218,9 +110,11 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Reference mask for saving NIfTI outputs (default: {DEFAULT_MASK}).")
     
     # Whether to consider atrophy only (True), or also to consider hypertrophy (False)
-    parser.add_argument("--ao", "--atrophy-only", required=True,
+    parser.add_argument("--atrophy-only", required=True,
                    help="Whether to only H-score atrophic regions")
     return parser
+
+### I/O Code ###
 
 def _resolve_stat_path(base: Path | None, override: Path | None, name: str) -> Path:
     """
@@ -235,7 +129,13 @@ def _resolve_stat_path(base: Path | None, override: Path | None, name: str) -> P
         return override
     if not base:
         raise SystemExit(f"Missing path for {name}. Provide --control-stats-dir or explicit --{name.replace('_', '-')}.")
-    return base / f"{name}.nii.gz"
+    nii_path = base / f"{name}.nii"
+    if nii_path.exists():
+        return nii_path
+    nii_gz_path = base / f"{name}.nii.gz"
+    if nii_gz_path.exists():
+        return nii_gz_path
+    raise SystemExit(f"Missing control stat file: {nii_path} or {nii_gz_path}")
 
 def save_df_to_nifti_bids(dataframes_dict, root, mask_path, analysis='tissue_segment_z_scores', ses='ses-01'):
     """
@@ -341,6 +241,62 @@ def load_control_stats(args: argparse.Namespace):
     return stats
 
 
+def import_nifti_to_numpy_array(filepath):
+    '''
+    Does what it says. Just provide the absolute filepath.
+    Args:
+        filepath: absolute path to the file to import
+    Returns:
+        nifti_data: nifti_data as a numpy array
+    '''
+    try:
+        # Load the NIfTI image using nilearn
+        nifti_img = image.load_img(filepath)
+
+        # Convert the NIfTI image to a NumPy array
+        nifti_data = nifti_img.get_fdata()
+
+        # Return the NIfTI image
+        return nifti_data
+    except Exception as e:
+        print("Error:", e)
+        return None
+
+def _subject_key(path: Path) -> str:
+    parts = path.parts
+    subj = next((p for p in parts if p.startswith(("sub-", "subject-", "subid-"))), None)
+    ses = next((p for p in parts if p.startswith("ses-")), None)
+    if subj and ses:
+        return f"{subj}/{ses}"
+    return subj or str(path)
+
+def _glob_map(base_dir: Path, pattern: str) -> Dict[str, Path]:
+    files = (Path(p) for p in sorted(glob(str(base_dir / pattern))))
+    return {_subject_key(p): p for p in files}
+
+def _load_df(files: Iterable[Path]) -> pd.DataFrame:
+    arrays = []
+    cols = []
+    for f in files:
+        arr = import_nifti_to_numpy_array(str(f))
+        if arr is None:
+            continue
+        cols.append(str(f))
+        arrays.append(np.asarray(arr).flatten())
+    if not arrays:
+        return pd.DataFrame()
+    data = np.stack(arrays, axis=1)
+    return pd.DataFrame(data, columns=cols)
+
+def _segments_from_maps(gm_map, wm_map, csf_map, subjects: List[str]) -> Dict[str, "pd.DataFrame"]:
+    return {
+        "grey_matter": _load_df(gm_map[s] for s in subjects),
+        "white_matter": _load_df(wm_map[s] for s in subjects),
+        "cerebrospinal_fluid": _load_df(csf_map[s] for s in subjects),
+    }
+
+### Math ###
+
 def compute_z_with_precalc_stats(expt_segments: Dict[str, "pd.DataFrame"], stats: dict):
     """Calculate patient z-scores using precomputed control mean/std arrays."""
     pt_tiv = get_tiv(expt_segments)
@@ -358,7 +314,6 @@ def compute_z_with_precalc_stats(expt_segments: Dict[str, "pd.DataFrame"], stats
         zscore_dict[tissue] = z_df
         zscore_mask_dict[tissue] = sig_mask
     return zscore_dict, zscore_mask_dict
-
 
 def compute_composite_with_precalc_stats(zscore_dict: Dict[str, "pd.DataFrame"], stats: dict, atrophy_only:bool) -> "pd.DataFrame":
     """Compute composite Z (H-score) using precomputed control norm mean/std."""
@@ -387,6 +342,83 @@ def compute_composite_with_control_scans(pt_dict, ctrl_dict, atrophy_only) -> pd
     first_key = next(iter(pt_dict))
     z = pd.DataFrame(z, columns=pt_dict[first_key].columns, index=pt_dict[first_key].index)
     return z, mean, std
+
+### Public API ###
+
+def run_pipeline(args: argparse.Namespace) -> None:
+    """
+    Orchestrator
+    
+    :param args: Args passed from the command line. 
+    """
+    # Prep
+    use_precalc_stats = any(
+        [
+            args.control_stats_dir,
+            args.gm_mean,
+            args.gm_std,
+            args.wm_mean,
+            args.wm_std,
+            args.csf_mean,
+            args.csf_std,
+            args.composite_mean,
+            args.composite_std,
+        ]
+    )
+    if not use_precalc_stats and not args.controls_root:
+        raise SystemExit("Provide either a control directory or pre-calculated control stats.")
+
+    # Imports
+    ctrl_segments = None
+    z_ctrl = None
+    if not use_precalc_stats:
+        ctrl_gm = _glob_map(args.controls_root, args.controls_gm_pattern)
+        ctrl_wm = _glob_map(args.controls_root, args.controls_wm_pattern)
+        ctrl_csf = _glob_map(args.controls_root, args.controls_csf_pattern)
+        ctrl_subjects = sorted(set(ctrl_gm) & set(ctrl_wm) & set(ctrl_csf))
+        if not ctrl_subjects:
+            raise SystemExit("No overlapping control subjects found across GM/WM/CSF patterns.")
+        ctrl_segments = _segments_from_maps(ctrl_gm, ctrl_wm, ctrl_csf, ctrl_subjects)
+        z_ctrl, _, _ = process_atrophy(data_dict=ctrl_segments, ctrl_dict=ctrl_segments)
+
+    gm_map = _glob_map(args.experiments_root, args.experiments_gm_pattern)
+    wm_map = _glob_map(args.experiments_root, args.experiments_wm_pattern)
+    csf_map = _glob_map(args.experiments_root, args.experiments_csf_pattern)
+    subjects = sorted(set(gm_map) & set(wm_map) & set(csf_map))
+    if not subjects:
+        raise SystemExit("No overlapping experimental subjects found across GM/WM/CSF patterns.")
+
+    stats = load_control_stats(args) if use_precalc_stats else None
+    total = len(subjects)
+    batch_size = min(MAX_BATCH_SIZE, total) if total > MAX_BATCH_SIZE else total
+
+    for i in range(0, total, batch_size):
+        batch = subjects[i:i + batch_size]
+        expt_segments = _segments_from_maps(gm_map, wm_map, csf_map, batch)
+
+        if use_precalc_stats:
+            atrophy, atrophy_thresholded = compute_z_with_precalc_stats(expt_segments, stats)
+            composite = compute_composite_with_precalc_stats(atrophy, stats, args.atrophy_only)
+        else:
+            atrophy, atrophy_thresholded, _ = process_atrophy(expt_segments, ctrl_segments)
+            composite, _, _ = compute_composite_with_control_scans(pt_dict=atrophy, ctrl_dict=z_ctrl, atrophy_only=args.atrophy_only)
+        atrophy["composite"] = composite
+        atrophy_thresholded["composite"] = composite.where(composite > 0, 0)
+
+        save_df_to_nifti_bids(
+            atrophy,
+            root=args.experiments_root,
+            mask_path=args.mask_path,
+            analysis=f"unthresholded_tissue_segment_z_scores",
+            ses=args.session,
+        )
+        save_df_to_nifti_bids(
+            atrophy_thresholded,
+            root=args.experiments_root,
+            mask_path=args.mask_path,
+            analysis=f"thresholded_tissue_segment_z_scores",
+            ses=args.session,
+        )
 
 def main() -> None:
     parser = build_parser()
