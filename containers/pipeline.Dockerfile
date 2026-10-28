@@ -1,6 +1,6 @@
 ### GET DEPENDENCIES ###
 FROM --platform=linux/amd64 calvinwhow/vbm:latest AS cat12
-FROM --platform=linux/amd64 python:3.10.8-slim
+FROM --platform=linux/amd64 python:3.13-slim-bookworm
 
 # Get matlab, easyreg, and python with associated deps
 COPY --from=cat12 /opt /opt

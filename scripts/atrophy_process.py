@@ -24,9 +24,12 @@ def tissue_atrophy_zscores(preprocessed: Dict[str, pd.DataFrame], control_stats:
     """Atrophy z-score per voxel for each tissue against the controls."""
     return orient_atrophy_positive({tissue: zscore(frame, *control_stats[tissue]) for tissue, frame in preprocessed.items()})
 
-def atrophy_norm(zscores: Dict[str, pd.DataFrame], atrophy_only: bool) -> np.ndarray:
+def atrophy_norm(zscores: Dict[str, pd.DataFrame], atrophy_only: bool, exclude_wm:bool=True) -> np.ndarray:
     """Voxels x subjects: L2 norm of the GM and CSF z-scores (WM is left out). With atrophy_only, only positive (atrophic) z-scores count."""
-    stacked = np.stack([zscores["grey_matter"].values, zscores["cerebrospinal_fluid"].values], axis=2)
+    if exclude_wm:
+        stacked = np.stack([zscores["grey_matter"].values, zscores["cerebrospinal_fluid"].values], axis=2)
+    else:
+        stacked = np.stack([zscores["grey_matter"].values, zscores["white_matter"].values, zscores["cerebrospinal_fluid"].values], axis=2)
     if atrophy_only:
         stacked = np.where(stacked > 0, stacked, 0)
     return np.sqrt(np.sum(stacked ** 2, axis=2))

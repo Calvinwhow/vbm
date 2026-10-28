@@ -14,7 +14,7 @@ def zero_low_probabilities(frame: pd.DataFrame, prob_threshold: float) -> pd.Dat
     """Voxels at or below the probability threshold become 0, which avoids huge z-scores from near-empty voxels."""
     return frame.where(frame > prob_threshold, 0)
 
-def preprocess_segments(segments: Dict[str, pd.DataFrame], prob_threshold: float = 0.001) -> Dict[str, pd.DataFrame]:
+def preprocess_segments(segments: Dict[str, pd.DataFrame], prob_threshold: float = 0.05) -> Dict[str, pd.DataFrame]:
     """Threshold every tissue, then divide each subject by its TIV (TIV is taken from the unthresholded segments)."""
     tiv = total_intracranial_volume(segments)
     return {tissue: zero_low_probabilities(frame, prob_threshold).div(tiv, axis="columns") for tissue, frame in segments.items()}

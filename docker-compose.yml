@@ -13,10 +13,10 @@ services:
       - SESSION=ses-01
       - T1_DIR=anat
       - T1_FILE=T1
-      - CTRL_DIST=ctrl_dist_young_atrophy_only
-      - ATROPHY_ONLY=true
+      - CTRL_DIST=ctrl_dist_old
+      - ATROPHY_ONLY=True
     volumes:
-      - /Users/cu135/hires_backdrops/test_atrophy:/root/data       #<--- use this to mount the BIDS directory containing your T1 scans
+      - /Users/cu135/hires_backdrops/ad_fx_for_savirdocker:/root/data       #<--- use this to mount the BIDS directory containing your T1 scans
       # - ${PWD}/assets:/root/assets
       # - ${PWD}/scripts:/root/scripts
     command: ["bash", "/root/scripts/run_pipeline.sh" ]
